@@ -1,0 +1,17 @@
+# Backend
+backend/venv/
+backend/__pycache__/
+backend/instance/
+*.pyc
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/.turbo/
+frontend/.vercel/
+
+# System / misc
+.env
+*.log
+.DS_Store
+Thumbs.db
