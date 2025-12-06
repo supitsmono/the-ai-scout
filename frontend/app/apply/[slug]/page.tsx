@@ -1,291 +1,340 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useState, useRef, type FormEvent, type ReactNode } from "react";
+import { motion } from "framer-motion";
+import PhoneInput from "@/components/ui/PhoneInput";
 
-const API_BASE = "http://127.0.0.1:5000";
+/* ---------------- ANIMATION CONFIG ---------------- */
 
-export default function ApplyPage() {
-  const { slug } = useParams<{ slug: string }>();
-  const [step, setStep] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const fadeUp = {
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+};
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    age: "",
-    city: "",
-    instagram: "",
-    tiktok: "",
-    height_cm: "",
-    chest_cm: "",
-    waist_cm: "",
-    hips_cm: "",
-    notes: "",
-  });
+/* ---------------- CONSTANTS ---------------- */
 
-  const [photos, setPhotos] = useState<(File | null)[]>([null, null, null, null]);
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+const YEARS = Array.from({ length: 70 }, (_, i) => new Date().getFullYear() - 10 - i);
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December"
+];
 
-  function updateField<K extends keyof typeof form>(key: K, value: string) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  }
+/* ---------------- MAIN PAGE ---------------- */
 
-  function handlePhotoChange(index: number, file: File | null) {
-    setPhotos((prev) => {
-      const copy = [...prev];
-      copy[index] = file;
-      return copy;
-    });
-  }
+export default function ApplyPage({ params }: { params: { slug: string } }) {
+  const [submitted, setSubmitted] = useState(false);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
 
-    try {
-      const fd = new FormData();
-      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-      photos.forEach((file, i) => {
-        if (file) fd.append(`photo_${i + 1}`, file);
-      });
+    if (formRef.current) {
+      const invalid = formRef.current.querySelector(":invalid") as HTMLElement | null;
 
-      const res = await fetch(`${API_BASE}/api/apply/${slug}`, {
-        method: "POST",
-        body: fd,
-      });
+      if (invalid) {
+        invalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        invalid.classList.add("ring-1", "ring-red-500");
 
-      const text = await res.text();
-      let data: any;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = {};
+        setTimeout(() => {
+          invalid.classList.remove("ring-1", "ring-red-500");
+        }, 2000);
+
+        return;
       }
-
-      if (!res.ok) {
-        throw new Error(data.error || data.message || "Application failed");
-      }
-
-      setDone(true);
-    } catch (err: any) {
-      setError(err.message || "Application failed");
-    } finally {
-      setSubmitting(false);
     }
-  }
 
-  if (done) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-black">
-        <div className="max-w-md mx-auto text-center space-y-4 px-4">
-          <h1 className="text-xl font-semibold">Application received</h1>
-          <p className="text-sm text-neutral-400">
-            Thank you for applying. Our team will review your profile and get back
-            to you if there is a match.
-          </p>
-        </div>
-      </main>
-    );
+    setSubmitted(true);
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-black via-neutral-950 to-neutral-900 px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-2xl rounded-3xl border border-neutral-800 bg-neutral-950/70 backdrop-blur-xl p-6 space-y-6 shadow-2xl shadow-black/60"
-      >
-        <div className="flex justify-between items-center">
-          <h1 className="text-lg font-semibold">Model application</h1>
-          <div className="flex gap-1 text-[10px]">
-            {[1, 2, 3].map((s) => (
-              <span
-                key={s}
-                className={`w-6 h-1 rounded-full ${
-                  s <= step ? "bg-indigo-500" : "bg-neutral-700"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
+    <main className="relative min-h-screen w-full bg-[#050816] text-white overflow-x-hidden">
+      {/* Ambient background */}
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.14),transparent_55%)]" />
 
-        {error && (
-          <p className="text-xs text-red-400 bg-red-950/30 border border-red-900/60 rounded-lg px-3 py-2">
-            {error}
-          </p>
-        )}
+      <div className="mx-auto w-full max-w-5xl px-5 sm:px-8 md:px-10 py-12 flex flex-col gap-12">
+        
+        {/* HEADER (motion allowed) */}
+        <motion.div
+          initial={fadeUp.initial}
+          animate={fadeUp.animate}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+        >
+          <Header slug={params.slug} />
+        </motion.div>
 
-        {step === 1 && (
-          <section className="grid md:grid-cols-2 gap-4 text-sm">
-            <Field
-              label="Full name"
-              required
-              value={form.name}
-              onChange={(v) => updateField("name", v)}
-            />
-            <Field
-              label="Email"
-              type="email"
-              required
-              value={form.email}
-              onChange={(v) => updateField("email", v)}
-            />
-            <Field
-              label="Age"
-              type="number"
-              value={form.age}
-              onChange={(v) => updateField("age", v)}
-            />
-            <Field
-              label="City"
-              value={form.city}
-              onChange={(v) => updateField("city", v)}
-            />
-            <Field
-              label="Instagram"
-              placeholder="@username"
-              value={form.instagram}
-              onChange={(v) => updateField("instagram", v)}
-            />
-            <Field
-              label="TikTok"
-              placeholder="@username"
-              value={form.tiktok}
-              onChange={(v) => updateField("tiktok", v)}
-            />
-          </section>
-        )}
-
-        {step === 2 && (
-          <section className="grid md:grid-cols-2 gap-4 text-sm">
-            <Field
-              label="Height (cm)"
-              type="number"
-              value={form.height_cm}
-              onChange={(v) => updateField("height_cm", v)}
-            />
-            <Field
-              label="Chest (cm)"
-              type="number"
-              value={form.chest_cm}
-              onChange={(v) => updateField("chest_cm", v)}
-            />
-            <Field
-              label="Waist (cm)"
-              type="number"
-              value={form.waist_cm}
-              onChange={(v) => updateField("waist_cm", v)}
-            />
-            <Field
-              label="Hips (cm)"
-              type="number"
-              value={form.hips_cm}
-              onChange={(v) => updateField("hips_cm", v)}
-            />
-            <div className="md:col-span-2">
-              <label className="text-xs text-neutral-300 mb-1 block">
-                Notes
-              </label>
-              <textarea
-                className="w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 min-h-[80px]"
-                value={form.notes}
-                onChange={(e) => updateField("notes", e.target.value)}
-              />
-            </div>
-          </section>
-        )}
-
-        {step === 3 && (
-          <section className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            {photos.map((file, i) => (
-              <div key={i} className="space-y-2">
-                <p className="text-[11px] text-neutral-300">
-                  Photo {i + 1} {i === 0 && <span className="text-red-400">*</span>}
-                </p>
-                <label className="block rounded-xl border border-dashed border-neutral-700 bg-neutral-900/80 h-28 flex flex-col items-center justify-center cursor-pointer hover:border-indigo-500/70 hover:bg-neutral-900 transition">
-                  <span className="text-[10px] text-neutral-400">
-                    {file ? file.name : "Click to upload"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) =>
-                      handlePhotoChange(i, e.target.files?.[0] || null)
-                    }
-                  />
-                </label>
-              </div>
-            ))}
-            <p className="text-[10px] text-neutral-500 md:col-span-4">
-              Minimum 1 photo required. Clear full-body and portrait shots are
-              recommended.
-            </p>
-          </section>
-        )}
-
-        <div className="flex justify-between pt-2 text-xs">
-          <button
-            type="button"
-            disabled={step === 1}
-            onClick={() => setStep((s) => Math.max(1, s - 1))}
-            className="px-3 py-2 rounded-xl border border-neutral-700 text-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-900/80 transition"
+        {/* FORM WRAPPER (no conditional mount!!) */}
+        <div style={{ display: submitted ? "none" : "block" }}>
+          <motion.div
+            initial={fadeUp.initial}
+            animate={fadeUp.animate}
+            transition={{ duration: 0.45, ease: "easeOut" }}
           >
-            Back
-          </button>
-          {step < 3 ? (
-            <button
-              type="button"
-              onClick={() => setStep((s) => Math.min(3, s + 1))}
-              className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-medium transition"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={submitting || !photos[0]}
-              className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:bg-indigo-700/70 text-white font-medium transition"
-            >
-              {submitting ? "Submitting..." : "Submit application"}
-            </button>
-          )}
+            <ApplyForm onSubmit={handleSubmit} forwardedRef={formRef} />
+          </motion.div>
         </div>
-      </form>
+
+        {/* THANK YOU PAGE (also no mount/unmount) */}
+        <div style={{ display: submitted ? "block" : "none" }}>
+          <motion.div
+            initial={fadeUp.initial}
+            animate={fadeUp.animate}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          >
+            <ThankYou />
+          </motion.div>
+        </div>
+
+        <FooterNote />
+      </div>
     </main>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  required,
-  placeholder,
+/* ---------------- HEADER ---------------- */
+
+function Header({ slug }: { slug: string }) {
+  return (
+    <header className="flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <motion.div
+          className="h-9 w-9 flex items-center justify-center rounded-xl bg-slate-900 border border-slate-800 shadow-[0_0_22px_rgba(56,189,248,0.35)]"
+          animate={{ y: [0, -2, 0] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span className="text-xs font-semibold tracking-tight">AI</span>
+        </motion.div>
+
+        <div className="leading-tight">
+          <p className="text-[15px] font-semibold tracking-tight">The AI Scout</p>
+          <p className="text-[11px] text-slate-400">
+            Official apply page for: <span className="text-slate-200">{slug}</span>
+          </p>
+        </div>
+      </div>
+
+      <p className="text-[13px] sm:text-[14px] text-slate-300 max-w-md leading-relaxed">
+        Apply once. The agency receives your details and photos in a clean,
+        AI-structured profile and reviews everything manually on their side.
+      </p>
+    </header>
+  );
+}
+
+/* ---------------- FORM ---------------- */
+
+function ApplyForm({
+  onSubmit,
+  forwardedRef,
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  required?: boolean;
-  placeholder?: string;
+  onSubmit: (e: FormEvent) => void;
+  forwardedRef: React.RefObject<HTMLFormElement>;
 }) {
   return (
-    <div className="space-y-1">
-      <label className="text-xs text-neutral-300">
-        {label} {required && <span className="text-red-400">*</span>}
-      </label>
-      <input
-        type={type}
-        required={required}
-        placeholder={placeholder}
-        className="w-full rounded-xl bg-neutral-900 border border-neutral-700 px-3 py-2 text-xs outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40 transition"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
+    <form ref={forwardedRef} onSubmit={onSubmit} className="space-y-12">
+      {/* PERSONAL INFO */}
+      <SectionBlock
+        title="Personal information"
+        subtitle="Use real details so the agency can contact you if there is a match."
+      >
+        <div className="grid sm:grid-cols-2 gap-4">
+
+          <Field label="First name" required>
+            <input required name="firstName" className="input" placeholder="Amira" />
+          </Field>
+
+          <Field label="Last name" required>
+            <input required name="lastName" className="input" placeholder="Novak" />
+          </Field>
+
+          <Field label="Phone number" required>
+            <PhoneInput />
+          </Field>
+
+          <Field label="Email address" required>
+            <input required type="email" name="email" className="input" placeholder="you@example.com" />
+          </Field>
+
+          <Field label="Country" required>
+            <input required name="country" className="input" placeholder="Netherlands" />
+          </Field>
+
+          <Field label="City" required>
+            <input required name="city" className="input" placeholder="Amsterdam" />
+          </Field>
+
+          <Field label="Height (cm)" required>
+            <input required name="height" className="input" placeholder="178" inputMode="numeric" pattern="[0-9]*" />
+          </Field>
+
+          <Field label="Date of birth" required>
+            <DobSelect />
+          </Field>
+
+        </div>
+      </SectionBlock>
+
+      {/* MOTIVATION */}
+      <SectionBlock
+        title="Motivation"
+        subtitle="Optional but helpful. Share anything you'd like the agency to know about you or your goals."
+      >
+        <Field label="Your message">
+          <textarea name="motivation" rows={3} className="input resize-none" placeholder="Tell the agency something about yourself." />
+        </Field>
+      </SectionBlock>
+
+      {/* PHOTOS */}
+      <SectionBlock
+        title="Required photos"
+        subtitle="Upload clear, recent photos. Natural light and simple outfits work best."
+      >
+        <div className="grid sm:grid-cols-2 gap-5">
+          <PhotoUpload title="Close-up" description="Your face clearly visible, neutral expression." name="photoCloseUp" />
+          <PhotoUpload title="Side-profile" description="Left or right profile, hair pulled back if possible." name="photoSideProfile" />
+          <PhotoUpload title="Full body" description="Standing, full height visible, simple clothing." name="photoFullBody" />
+          <PhotoUpload title="Full body side-profile" description="Full body from the side, natural posture." name="photoFullBodySide" />
+        </div>
+      </SectionBlock>
+
+      {/* SUBMIT BUTTON */}
+      <div className="flex flex-col gap-3 pt-2">
+        <button
+          type="submit"
+          className="inline-flex items-center justify-center rounded-full bg-white text-slate-900 px-6 py-2.5 text-sm font-semibold shadow-md hover:bg-slate-100 active:scale-[0.99] transition"
+        >
+          Submit application
+        </button>
+
+        <p className="text-[11px] text-slate-500 max-w-md">
+          Your application goes straight into the agency’s intake dashboard powered by The AI Scout.
+        </p>
+      </div>
+    </form>
+  );
+}
+
+/* ---------------- DOB SELECT ---------------- */
+
+function DobSelect() {
+  return (
+    <div className="grid grid-cols-3 gap-2 text-[11px]">
+      <select name="dobDay" required className="input bg-slate-950/80 text-[11px]" defaultValue="">
+        <option value="" disabled>Day</option>
+        {DAYS.map((d) => <option key={d}>{d}</option>)}
+      </select>
+
+      <select name="dobMonth" required className="input bg-slate-950/80 text-[11px]" defaultValue="">
+        <option value="" disabled>Month</option>
+        {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+      </select>
+
+      <select name="dobYear" required className="input bg-slate-950/80 text-[11px]" defaultValue="">
+        <option value="" disabled>Year</option>
+        {YEARS.map((y) => <option key={y}>{y}</option>)}
+      </select>
     </div>
+  );
+}
+
+/* ---------------- THANK YOU ---------------- */
+
+function ThankYou() {
+  return (
+    <section className="space-y-5 max-w-md">
+      <h2 className="text-xl sm:text-2xl font-semibold">Application received 🎉</h2>
+
+      <p className="text-[13px] sm:text-[14px] text-slate-300 leading-relaxed">
+        Your profile is now in the agency’s intake queue. The AI Scout has structured your details and photos so the team can review you more easily and fairly.
+      </p>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 text-[12px] text-slate-300 space-y-2">
+        <p className="font-medium text-slate-100">What happens next?</p>
+        <ul className="space-y-1">
+          <li>• The agency sees your structured profile in their dashboard.</li>
+          <li>• AI helps them sort and prioritise — bookers decide manually.</li>
+          <li>• If there’s a potential fit, they will contact you directly.</li>
+        </ul>
+      </div>
+
+      <p className="text-[11px] text-slate-500">
+        Keep an eye on your email and social media for possible follow-up.
+      </p>
+    </section>
+  );
+}
+
+/* ---------------- FOOTER NOTE ---------------- */
+
+function FooterNote() {
+  return (
+    <p className="text-[11px] text-slate-500 leading-relaxed max-w-lg">
+      The AI Scout does not sign or represent models. It powers intake and review for agencies only.
+    </p>
+  );
+}
+
+/* ---------------- UTILITY COMPONENTS ---------------- */
+
+function SectionBlock({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+  return (
+    <div className="space-y-4 border-b border-slate-800 pb-8">
+      <SectionTitle title={title} subtitle={subtitle} />
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="space-y-1">
+      <h3 className="text-sm sm:text-[15px] font-semibold text-slate-100">{title}</h3>
+      <p className="text-[12px] text-slate-400 leading-relaxed">{subtitle}</p>
+    </div>
+  );
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-slate-200">
+      <span className="text-[11px] sm:text-xs">
+        {label}
+        {required && <span className="text-red-400"> *</span>}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function PhotoUpload({ title, description, name }: { title: string; description: string; name: string }) {
+  return (
+    <motion.div
+      whileHover={{ y: -2, scale: 1.01 }}
+      transition={{ duration: 0.18 }}
+      className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 space-y-2"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium text-slate-100">{title}</p>
+          <p className="text-[11px] text-slate-400">{description}</p>
+        </div>
+
+        <div className="h-7 w-7 rounded-full bg-slate-900/80 border border-slate-700 flex items-center justify-center text-[11px]">
+          📷
+        </div>
+      </div>
+
+      <input
+        type="file"
+        name={name}
+        required
+        accept="image/*"
+        className="mt-2 block w-full text-[11px] text-slate-300 
+          file:mr-3 file:rounded-md file:border-0 
+          file:bg-slate-800 file:px-3 file:py-1.5 
+          file:text-[11px] file:font-medium 
+          file:text-slate-100 hover:file:bg-slate-700"
+      />
+    </motion.div>
   );
 }

@@ -1,652 +1,596 @@
 "use client";
 
+import { useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
+import SlidePanel from "@/components/home/SlidePanel";
 
-/* ===============================
-   CONSTANTS
-================================ */
+type PanelKey = "how" | "agencies" | "pricing";
 
-const LIVE_EVENTS = [
-  "New model applied via campaign link.",
-  "AI pre-ranked 9 profiles for Atelier Nova.",
-  "3 models moved from Shortlisted → Contacted.",
-  "High-potential profile flagged from TikTok.",
-  "2 new scouts invited to the workspace.",
-];
+const fadeUp = {
+  initial: { opacity: 0, y: 18 },
+  whileInView: { opacity: 1, y: 0 },
+};
 
-const PIPELINE_COLUMNS = ["Incoming", "Shortlisted", "Contacted", "Scouted", "Archived"];
-
-/* ===============================
-   ROOT
-================================ */
-
-export default function LandingPage() {
-  const [eventIndex, setEventIndex] = useState(0);
+export default function HomePage() {
+  const [panel, setPanel] = useState<PanelKey | null>(null);
 
   useEffect(() => {
-    const timer = setInterval(
-      () => setEventIndex((prev) => (prev + 1) % LIVE_EVENTS.length),
-      3600
-    );
-    return () => clearInterval(timer);
-  }, []);
+    window.scrollTo(0, 0);
+    document.body.style.overflow = panel ? "hidden" : "auto";
+  }, [panel]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      <BackgroundScene />
-      <SiteHeader />
-      <main className="flex-1">
-        <HeroSection currentEvent={LIVE_EVENTS[eventIndex]} />
-        <TrustStrip />
-        <HowItWorks />
-        <PipelineSection />
-        <PersonasSection />
-        <BottomCTA />
-      </main>
-      <SiteFooter />
-    </div>
+    <main className="relative min-h-screen w-full bg-[#050816] text-white overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(60,190,255,0.12),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.10),transparent_55%)]" />
+      <Panels panel={panel} setPanel={setPanel} />
+      <div className="mx-auto max-w-6xl min-h-screen w-full px-5 sm:px-8 md:px-10 py-8 md:py-12 flex flex-col gap-14">
+        <Navbar setPanel={setPanel} />
+        <Hero setPanel={setPanel} />
+        <WhyAgencies />
+        <HowItWorks setPanel={setPanel} />
+        <Tiers />
+        <Analytics />
+        <Benefits />
+        <Guarantee />
+        <Footer />
+      </div>
+    </main>
   );
 }
 
-/* ===============================
-   BACKGROUND / GLOBAL CHROME
-   (Ramp-style: zacht, subtiel)
-================================ */
+/* ---------------- SLIDE PANELS ---------------- */
 
-function BackgroundScene() {
-  const { scrollYProgress } = useScroll();
-  const y = useTransform(scrollYProgress, [0, 1], [0, 120]);
-  const opacity = useTransform(scrollYProgress, [0, 1], [1, 0.65]);
-
+function Panels({
+  panel,
+  setPanel,
+}: {
+  panel: PanelKey | null;
+  setPanel: (v: PanelKey | null) => void;
+}) {
   return (
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-black">
-      {/* Soft top halo */}
-      <motion.div
-        style={{ y, opacity }}
-        className="absolute -top-48 left-1/2 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(79,70,229,0.26),transparent_65%)] blur-3xl"
-      />
-      {/* Soft bottom halo */}
-      <motion.div
-        style={{ y }}
-        className="absolute bottom-[-220px] left-1/2 h-[28rem] w-[34rem] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_center,_rgba(16,185,129,0.18),transparent_65%)] blur-3xl opacity-80"
-      />
-      {/* Vignette */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(15,23,42,0.85),_rgba(0,0,0,0.98))]" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,_transparent,_rgba(0,0,0,0.9))]" />
-    </div>
-  );
-}
+    <>
+      {/* HOW PANEL */}
+      <SlidePanel
+        open={panel === "how"}
+        onClose={() => setPanel(null)}
+        title="How The AI Scout Works"
+      >
+        <p className="text-sm text-slate-300 mb-6 leading-relaxed">
+          The AI Scout turns your Instagram, TikTok and website traffic into clean,
+          ranked model applications — without your team drowning in DMs and screenshots.
+        </p>
 
-/* ===============================
-   HEADER
-================================ */
+        <div className="space-y-5 text-sm">
+          <PanelStep
+            number="01"
+            title="One apply link in every bio"
+            text="Drop your unique link in Instagram, TikTok, website and campaigns. Every model lands in the same guided apply flow."
+          />
 
-function SiteHeader() {
-  return (
-    <header className="sticky top-0 z-30 border-b border-neutral-900/70 bg-black/70 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-        {/* Brand */}
-        <Link href="/" className="flex items-center gap-3">
-          <motion.div
-            animate={{ rotate: [0, 3, 0, -3, 0] }}
-            transition={{ repeat: Infinity, duration: 28, ease: "easeInOut" }}
-            className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-emerald-400 text-[11px] font-semibold shadow-[0_0_30px_rgba(79,70,229,0.6)]"
-          >
-            AI
-          </motion.div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold tracking-tight">The AI Scout</span>
-            <span className="text-[11px] text-neutral-400">
-              Operating system for scouting teams
-            </span>
-          </div>
-        </Link>
+          <PanelStep
+            number="02"
+            title="AI intake & instant potential scoring"
+            text="Models upload photos and details. AI analyses everything and sorts each profile into Spotlight, Watchlist or Low Fit."
+          />
 
-        {/* Nav */}
-        <nav className="hidden items-center gap-7 text-[11px] text-neutral-400 md:flex">
-          <a href="#how-it-works" className="hover:text-white transition">
-            How it works
-          </a>
-          <a href="#pipeline" className="hover:text-white transition">
-            Pipeline
-          </a>
-          <a href="#personas" className="hover:text-white transition">
-            For whom
-          </a>
-        </nav>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className="rounded-full border border-neutral-700 px-3.5 py-1.5 text-[11px] text-neutral-300 hover:border-neutral-400 hover:text-white transition"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/login"
-            className="rounded-full bg-white px-3.5 py-1.5 text-[11px] font-medium text-black shadow-[0_0_24px_rgba(255,255,255,0.35)] transition hover:bg-neutral-200"
-          >
-            Enter dashboard
-          </Link>
+          <PanelStep
+            number="03"
+            title="A calm, shared decision workspace"
+            text="Your team sees one queue, one view, one truth. Save faces to lists, add notes and contact models from one place."
+          />
         </div>
+      </SlidePanel>
+
+      {/* AGENCIES PANEL */}
+      <SlidePanel
+        open={panel === "agencies"}
+        onClose={() => setPanel(null)}
+        title="For Agencies"
+      >
+        <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+          Built for agencies that want more great faces in less time — without lowering the bar.
+        </p>
+
+        <ul className="space-y-3 text-sm text-slate-300">
+          <li>• One intake OS instead of DMs, email, WhatsApp and forms.</li>
+          <li>• AI structures the chaos — your team keeps final say.</li>
+          <li>• Save talent into lists per board or market.</li>
+          <li>• Contact models in one click with full context.</li>
+          <li>• See which channels bring high-quality applicants.</li>
+        </ul>
+      </SlidePanel>
+
+      {/* PRICING PANEL */}
+      <SlidePanel
+        open={panel === "pricing"}
+        onClose={() => setPanel(null)}
+        title="Pricing"
+      >
+        <p className="text-sm text-slate-300 mb-4">
+          One simple plan. No add-ons. Cancel anytime.
+        </p>
+
+        <div className="space-y-6 text-sm">
+          <div>
+            <h4 className="font-semibold text-slate-100 mb-1 text-base">
+              Agency plan · €449 / month
+            </h4>
+            <p className="text-slate-400 text-[13px] mb-3">
+              One booked job a month easily covers the cost of The AI Scout.
+            </p>
+
+            <ul className="space-y-1.5 text-slate-300">
+              <li>• Unique apply link for all platforms</li>
+              <li>• Unlimited applications</li>
+              <li>• AI scoring (Spotlight / Watchlist / Low Fit)</li>
+              <li>• Lists, notes, tags & team workspace</li>
+              <li>• Analytics for clicks, applies & tiers</li>
+            </ul>
+          </div>
+
+          <div className="h-px w-full bg-slate-800" />
+
+          <div>
+            <h4 className="font-semibold text-slate-100 mb-1 text-sm">
+              Early adopters benefit
+            </h4>
+            <p className="text-slate-400 text-[13px]">
+              The €449 launch rate will increase with new automation features.
+              Agencies joining now keep their pricing locked in.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex gap-3 flex-wrap">
+          <CTA href="/signup">Start free · lock in €449</CTA>
+          <SecondaryCTALink href="/demo">Book a 15-min demo</SecondaryCTALink>
+        </div>
+      </SlidePanel>
+    </>
+  );
+}
+
+function PanelStep({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div>
+      <h4 className="font-semibold text-slate-100 mb-0.5">
+        {number} · {title}
+      </h4>
+      <p className="text-slate-400 text-sm leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+/* ---------------- NAVBAR ---------------- */
+
+function Navbar({ setPanel }: { setPanel: (v: PanelKey | null) => void }) {
+  return (
+    <header className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <motion.div
+          className="bg-slate-900/70 border border-slate-800 rounded-xl h-8 w-8 flex items-center justify-center shadow-[0_0_22px_rgba(56,189,248,0.25)]"
+          animate={{ y: [0, -1.5, 0] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <span className="text-xs font-semibold">AI</span>
+        </motion.div>
+        <div className="leading-tight">
+          <p className="text-sm font-semibold tracking-tight">The AI Scout</p>
+          <p className="text-[11px] text-slate-400">Intake OS for agencies</p>
+        </div>
+      </div>
+
+      <nav className="hidden md:flex items-center gap-6 text-xs text-slate-300">
+        <NavButton onClick={() => setPanel("how")}>How it works</NavButton>
+        <NavButton onClick={() => setPanel("agencies")}>For agencies</NavButton>
+        <NavButton onClick={() => setPanel("pricing")}>Pricing</NavButton>
+        <Link href="#analytics" className="hover:text-white transition-colors">
+          Analytics
+        </Link>
+      </nav>
+
+      <div className="flex items-center gap-3">
+        <Link href="/login" className="hidden md:inline text-xs text-slate-300 hover:text-white">
+          Log in
+        </Link>
+        <CTA href="/signup">Start free</CTA>
       </div>
     </header>
   );
 }
 
-/* ===============================
-   HERO (Ramp-style: veel lucht)
-================================ */
-
-function HeroSection({ currentEvent }: { currentEvent: string }) {
+function NavButton({
+  children,
+  onClick,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+}) {
   return (
-    <section className="border-b border-neutral-900/80">
-      <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-20 pt-14 lg:flex-row lg:items-center lg:gap-20 lg:pt-18">
-        {/* Left: calm messaging */}
-        <div className="flex flex-1 flex-col gap-7">
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950/70 px-3 py-1 text-[11px] text-neutral-300"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            <span>Centralize inbound. Calm down your scouting process.</span>
-          </motion.div>
+    <button onClick={onClick} className="hover:text-white transition-colors">
+      {children}
+    </button>
+  );
+}
 
-          <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.05 }}
-            className="text-[2.1rem] font-semibold tracking-tight sm:text-[2.6rem] lg:text-[3rem] lg:leading-[1.1]"
-          >
-            A calm{" "}
-            <span className="bg-gradient-to-r from-indigo-300 via-emerald-200 to-cyan-200 bg-clip-text text-transparent">
-              operating system
-            </span>{" "}
-            for agencies that actually scout.
-          </motion.h1>
+/* ---------------- HERO ---------------- */
 
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.12 }}
-            className="max-w-xl text-[13px] leading-relaxed text-neutral-300"
-          >
-            The AI Scout is where every application lands, every model has a profile and your
-            team sees the same pipeline. No more screenshots, scattered DMs or guessing who
-            should be contacted next.
-          </motion.p>
+function Hero({ setPanel }: { setPanel: (v: PanelKey | null) => void }) {
+  return (
+    <section className="grid gap-12 md:grid-cols-2 md:items-center mt-4">
+      <motion.div {...fadeUp} transition={{ duration: 0.5 }} className="flex flex-col gap-6">
+        <Badge text="One link in your bio. A full intake OS behind it." />
 
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            className="flex flex-wrap items-center gap-3"
-          >
-            <Link
-              href="/login"
-              className="rounded-full bg-white px-4 py-2 text-[12px] font-medium text-black shadow-[0_0_26px_rgba(255,255,255,0.35)] transition hover:bg-neutral-200"
-            >
-              Open agency dashboard
-            </Link>
-            <a
-              href="#how-it-works"
-              className="rounded-full border border-neutral-700 px-3.5 py-2 text-[12px] text-neutral-200 transition hover:border-neutral-400 hover:text-white"
-            >
-              See how it works
-            </a>
-          </motion.div>
+        <h1 className="text-4xl sm:text-5xl leading-tight font-semibold">
+          Stop drowning in{" "}
+          <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 bg-clip-text text-transparent">
+            messy model applications
+          </span>
+          . Start scouting with clarity.
+        </h1>
 
-          <div className="flex flex-wrap gap-4 pt-2 text-[11px] text-neutral-400">
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              <span>No code. Drop-in link for your next campaign.</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-              <span>Built around real scouting workflows, not generic CRM logic.</span>
-            </span>
-          </div>
+        <p className="text-slate-300 text-[15px] leading-relaxed max-w-md">
+          Agencies add one apply link to Instagram, TikTok and their website.
+          Models apply once. AI scores potential. Your team sees a single ranked queue.
+          <span className="block mt-2 text-slate-400">
+            One booked job a month easily covers the cost of The AI Scout.
+          </span>
+        </p>
+
+        <div className="flex gap-3 flex-wrap items-center">
+          <CTA href="/signup">Start free · €449/mo after</CTA>
+          <SecondaryCTAButton onClick={() => setPanel("how")}>
+            See how it works
+          </SecondaryCTAButton>
         </div>
 
-        {/* Right: simple product visual, subtle motion */}
+        <p className="text-[11px] text-slate-500">
+          No setup fee · Cancel anytime · Built for agencies with 1–10 bookers
+        </p>
+      </motion.div>
+
+      <motion.div
+        {...fadeUp}
+        transition={{ duration: 0.6 }}
+        className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-[0_18px_42px_rgba(0,0,0,0.8)] relative"
+      >
         <motion.div
-          initial={{ opacity: 0, y: 18, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.15, type: "spring", stiffness: 90 }}
-          className="relative flex flex-1 items-center justify-end"
-        >
-          <motion.div
-            whileHover={{ y: -6, rotateX: 2.5, rotateY: -2.5 }}
-            transition={{ type: "spring", stiffness: 120, damping: 18 }}
-            className="relative w-full max-w-md rounded-3xl border border-neutral-800 bg-neutral-950/85 p-4 shadow-[0_32px_120px_rgba(0,0,0,0.95)] backdrop-blur-xl"
-          >
-            <div className="mb-4 flex items-center justify-between text-[11px] text-neutral-400">
-              <span>Agency pipeline overview</span>
-              <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-[10px] text-neutral-300">
-                Nova Models · Workspace
-              </span>
-            </div>
-
-            {/* Columns preview – calm, simplified */}
-            <div className="grid grid-cols-3 gap-3 text-[11px]">
-              <MiniColumn title="Incoming" count="127" badge="New talent" />
-              <MiniColumn title="Shortlisted" count="32" badge="For review" />
-              <MiniColumn title="Scouted" count="18" badge="High intent" />
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/90 p-3">
-              <div className="mb-2 flex items-center justify-between text-[11px] text-neutral-400">
-                <span>Today&apos;s focus (suggested)</span>
-                <span className="text-[10px] text-neutral-500">AI ranking in development</span>
-              </div>
-              <div className="space-y-1.5 text-[11px]">
-                <FocusRow name="Amira · Berlin" stage="Shortlisted" note="New images added" />
-                <FocusRow name="Luca · Milan" stage="Contacted" note="Awaiting reply" />
-                <FocusRow name="Noah · Amsterdam" stage="Scouted" note="Ready for option" />
-              </div>
-            </div>
-
-            <motion.div
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ repeat: Infinity, duration: 3.6, ease: "easeInOut" }}
-              className="mt-3 rounded-2xl border border-neutral-800 bg-neutral-950/80 px-3 py-2 text-[11px] text-neutral-300"
-            >
-              <span className="mr-1 text-neutral-400">Live event:</span>
-              {currentEvent}
-            </motion.div>
-          </motion.div>
-        </motion.div>
-      </div>
+          className="pointer-events-none absolute -top-10 right-0 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl"
+          animate={{ opacity: [0.2, 0.6, 0.2] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <HeroDashboardPreview />
+      </motion.div>
     </section>
   );
 }
 
-function MiniColumn({
-  title,
-  count,
-  badge,
-}: {
-  title: string;
-  count: string;
-  badge: string;
-}) {
+function HeroDashboardPreview() {
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/80 px-3 py-2.5">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-[11px] text-neutral-200">{title}</span>
-        <span className="text-[10px] text-neutral-500">{badge}</span>
+    <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 5, repeat: Infinity }}>
+      <div className="flex justify-between text-[11px] mb-3 text-slate-400">
+        <span>Today · Intake queue</span>
+        <span className="bg-slate-900 border border-slate-700 rounded-full px-2 py-1">Live</span>
       </div>
-      <p className="text-xl font-semibold text-neutral-50">{count}</p>
+
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <MiniStat label="New" value="38" />
+        <MiniStat label="Spotlight" value="12" />
+        <MiniStat label="Avg. review" value="3m" />
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        <FaceRow name="Amira" tier="Spotlight" city="Berlin" status="Shortlisted" />
+        <FaceRow name="Noa" tier="Watchlist" city="Amsterdam" status="Reviewing" />
+        <FaceRow name="Luca" tier="Low Fit" city="Paris" status="New" />
+        <FaceRow name="Elena" tier="Spotlight" city="Milan" status="Shortlisted" />
+      </div>
+    </motion.div>
+  );
+}
+
+/* ---------------- WHY AGENCIES ---------------- */
+
+function WhyAgencies() {
+  return (
+    <motion.section {...fadeUp} transition={{ duration: 0.4 }} className="space-y-4 mt-4">
+      <h2 className="text-xl sm:text-2xl font-semibold">
+        Built for modern model agencies who want more signal, less noise.
+      </h2>
+
+      <p className="text-slate-300 max-w-xl text-sm leading-relaxed">
+        Your intake is currently spread across DMs, WhatsApp, email and forms.
+        With The AI Scout, every model lands in one place with the same clean
+        structure. Your team spends time on real decisions — not on filtering chaos.
+      </p>
+    </motion.section>
+  );
+}
+
+/* ---------------- HOW IT WORKS SECTION ---------------- */
+
+function HowItWorks({ setPanel }: { setPanel: (v: PanelKey | null) => void }) {
+  return (
+    <motion.section {...fadeUp} transition={{ duration: 0.4 }} className="mt-12">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <p className="uppercase tracking-[0.18em] text-[11px] text-slate-400">
+            How it works
+          </p>
+          <h2 className="text-xl font-semibold">From link click to clear decisions</h2>
+        </div>
+        <SecondaryCTAButton small onClick={() => setPanel("how")}>
+          Detailed view
+        </SecondaryCTAButton>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Step
+          step="01"
+          title="Drop your link everywhere"
+          desc="Instagram bio, TikTok, site, casting calls — every click lands in the same branded apply flow."
+        />
+        <Step
+          step="02"
+          title="AI scores potential"
+          desc="Models upload info + photos. AI sorts profiles into Spotlight, Watchlist or Low Fit."
+        />
+        <Step
+          step="03"
+          title="Your team decides"
+          desc="Save to lists, reject, or contact — all from one clear dashboard."
+        />
+      </div>
+    </motion.section>
+  );
+}
+
+/* ---------------- TIERS ---------------- */
+
+function Tiers() {
+  return (
+    <motion.section {...fadeUp} transition={{ duration: 0.4 }} className="mt-12">
+      <h2 className="text-xl font-semibold mb-3">AI potential tiers that respect your eye</h2>
+
+      <p className="text-slate-300 text-sm max-w-xl mb-6">
+        The tiers don’t replace your taste — they simply highlight where to look first.
+        Bookers get structure instead of a chaos feed.
+      </p>
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card title="Spotlight" desc="Strong fit. Review these first." />
+        <Card title="Watchlist" desc="Potential. Keep on your radar." />
+        <Card title="Low Fit" desc="Visible, but lower priority." />
+      </div>
+    </motion.section>
+  );
+}
+
+/* ---------------- ANALYTICS ---------------- */
+
+function Analytics() {
+  return (
+    <motion.section id="analytics" {...fadeUp} transition={{ duration: 0.4 }} className="mt-12">
+      <p className="uppercase tracking-[0.18em] text-[11px] text-slate-400">Analytics</p>
+
+      <h2 className="text-xl font-semibold mb-3">
+        See exactly what your apply link delivers
+      </h2>
+
+      <p className="text-slate-300 text-sm max-w-xl mb-6">
+        You see who clicks, who completes the apply flow and how many land in each tier.
+        Perfect for optimising campaigns, castings and budget.
+      </p>
+
+      <div className="bg-slate-900/50 p-5 rounded-2xl border border-slate-800">
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <MiniStat label="Clicks this week" value="1,240" />
+          <MiniStat label="Completed applies" value="312" />
+        </div>
+
+        <div className="text-[11px] space-y-1.5">
+          <AnalyticsRow label="Spotlight" value="27%" />
+          <AnalyticsRow label="Watchlist" value="41%" />
+          <AnalyticsRow label="Low Fit" value="32%" />
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function AnalyticsRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-slate-400">{label}</span>
+      <span className="text-slate-100">{value}</span>
     </div>
   );
 }
 
-function FocusRow({
-  name,
-  stage,
-  note,
+/* ---------------- BENEFITS ---------------- */
+
+function Benefits() {
+  return (
+    <motion.section {...fadeUp} transition={{ duration: 0.4 }} className="mt-12">
+      <div className="grid md:grid-cols-3 gap-4">
+        <Card title="One intake, not ten" desc="DMs, email and forms flow into one queue." />
+        <Card title="Consistent review" desc="Every model has the same clean structure." />
+        <Card title="Clear next steps" desc="Shortlists and notes stay attached to the profile." />
+      </div>
+    </motion.section>
+  );
+}
+
+/* ---------------- GUARANTEE ---------------- */
+
+function Guarantee() {
+  return (
+    <motion.section {...fadeUp} transition={{ duration: 0.4 }} className="mt-12">
+      <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/5 px-6 py-5 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <p className="text-emerald-300 font-medium">
+            If The AI Scout doesn’t save your team hours in the first month, it’s not worth keeping.
+          </p>
+          <p className="text-[12px] text-emerald-100/80 mt-1 max-w-xl">
+            Start with a free trial. Cancel anytime. No contracts, no setup fee — just a cleaner intake from day one.
+          </p>
+        </div>
+        <CTA href="/signup">Start free today</CTA>
+      </div>
+    </motion.section>
+  );
+}
+
+/* ---------------- FOOTER ---------------- */
+
+function Footer() {
+  return (
+    <footer className="mt-16 py-6 border-t border-slate-800 text-[11px] text-slate-500 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-center gap-2">
+        <span>© {new Date().getFullYear()} The AI Scout.</span>
+        <span className="hidden h-3 w-[1px] bg-slate-700 sm:inline-block" />
+        <span>AI-powered scouting OS for modelling agencies.</span>
+      </div>
+
+      <div className="flex gap-4 flex-wrap">
+        <Link href="/privacy" className="hover:text-slate-300">Privacy</Link>
+        <Link href="/terms" className="hover:text-slate-300">Terms</Link>
+        <Link href="/contact" className="hover:text-slate-300">Contact</Link>
+      </div>
+    </footer>
+  );
+}
+
+/* ---------------- SMALL COMPONENTS ---------------- */
+
+function Badge({ text }: { text: string }) {
+  return (
+    <span className="text-[11px] px-3 py-1 rounded-full border border-slate-700 bg-slate-900/60 text-slate-300 w-fit">
+      {text}
+    </span>
+  );
+}
+
+function CTA({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="rounded-full bg-white text-slate-900 text-xs font-semibold px-5 py-2 hover:bg-slate-100 transition-colors shadow-sm"
+    >
+      {children}
+    </Link>
+  );
+}
+
+function SecondaryCTALink({
+  href,
+  children,
+  small,
 }: {
-  name: string;
-  stage: string;
-  note: string;
+  href: string;
+  children: ReactNode;
+  small?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-950/85 px-2.5 py-1.5">
-      <div className="flex flex-col">
-        <span className="text-[11px] text-neutral-100">{name}</span>
-        <span className="text-[10px] text-neutral-500">
-          {stage} · {note}
-        </span>
+    <Link
+      href={href}
+      className={`rounded-full border border-slate-700 bg-slate-900 text-slate-100 ${
+        small ? "px-3 py-1.5 text-[11px]" : "px-5 py-2 text-xs"
+      } hover:bg-slate-800 transition-colors`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function SecondaryCTAButton({
+  onClick,
+  children,
+  small,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+  small?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border border-slate-700 bg-slate-900 text-slate-100 ${
+        small ? "px-3 py-1.5 text-[11px]" : "px-5 py-2 text-xs"
+      } hover:bg-slate-800 transition-colors`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-slate-900/70 border border-slate-800 p-2.5 rounded-lg">
+      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className="text-sm font-semibold text-slate-50">{value}</p>
+    </div>
+  );
+}
+
+function FaceRow({
+  name,
+  tier,
+  city,
+  status,
+}: {
+  name: string;
+  tier: string;
+  city: string;
+  status: string;
+}) {
+  return (
+    <div className="flex justify-between items-center bg-slate-900/60 border border-slate-800 px-3 py-2 rounded-lg">
+      <div>
+        <p className="text-[11px] font-medium text-slate-50">{name}</p>
+        <p className="text-[10px] text-slate-400">
+          {tier} · {city}
+        </p>
       </div>
-      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-        Priority
+      <span className="text-[10px] px-2 py-1 rounded-full bg-slate-900 border border-slate-700 text-slate-200">
+        {status}
       </span>
     </div>
   );
 }
 
-/* ===============================
-   TRUST STRIP (simpler)
-================================ */
-
-function TrustStrip() {
+function Step({
+  step,
+  title,
+  desc,
+}: {
+  step: string;
+  title: string;
+  desc: string;
+}) {
   return (
-    <section className="border-b border-neutral-900/80 bg-black/75">
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-[11px] text-neutral-400 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          <span>Calm infrastructure for agencies, scouting teams & talent managers.</span>
-        </div>
-        <div className="flex flex-wrap gap-2 text-[10px]">
-          <span className="rounded-full border border-neutral-800 bg-neutral-950/80 px-3 py-1">
-            Replace spreadsheets & DMs
-          </span>
-          <span className="rounded-full border border-neutral-800 bg-neutral-950/80 px-3 py-1">
-            All inbound in one place
-          </span>
-          <span className="rounded-full border border-neutral-800 bg-neutral-950/80 px-3 py-1">
-            AI scoring ready by design
-          </span>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ===============================
-   HOW IT WORKS (korte, heldere flow)
-================================ */
-
-function HowItWorks() {
-  return (
-    <section
-      id="how-it-works"
-      className="border-b border-neutral-900/80 bg-gradient-to-b from-black/85 via-neutral-950/85 to-black/90"
-    >
-      <div className="mx-auto max-w-6xl px-4 py-14 lg:py-18">
-        <div className="mb-9 max-w-2xl space-y-3">
-          <h2 className="text-lg font-semibold tracking-tight">
-            One link in your bio. A structured scouting pipeline out.
-          </h2>
-          <p className="text-[13px] leading-relaxed text-neutral-300">
-            The AI Scout doesn&apos;t try to replace your taste. It gives you the structure to
-            run campaigns, keep track of who&apos;s in front of you and get ready for AI
-            ranking without changing how you scout.
-          </p>
-        </div>
-
-        <div className="grid gap-10 lg:grid-cols-[1.4fr,1fr] lg:items-start">
-          <ol className="space-y-6 text-sm text-neutral-200">
-            <Step
-              step="01"
-              title="Generate your unique apply link"
-              body="Each agency gets a dedicated intake URL. Share it on your site, in IG bios or with scouts. Every application routes into the same place."
-            />
-            <Step
-              step="02"
-              title="Models apply with photos and essentials"
-              body="Applicants send portfolio shots, socials and measurements in a mobile-first form. No more chasing missing details in the DMs."
-            />
-            <Step
-              step="03"
-              title="Move models together, prepare for AI scoring"
-              body="Your team works one shared pipeline. When AI ranking goes live, it runs on the stages and data you already use."
-            />
-          </ol>
-
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.5, type: "spring", stiffness: 90 }}
-            className="relative rounded-3xl border border-neutral-800 bg-neutral-950/85 p-4 text-[12px] text-neutral-300 shadow-[0_26px_90px_rgba(0,0,0,0.9)]"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs text-neutral-200">AI scoring (in development)</span>
-              <span className="rounded-full bg-amber-500/12 px-2 py-0.5 text-[10px] text-amber-300">
-                Early access
-              </span>
-            </div>
-            <p className="mb-3 text-[12px] text-neutral-400">
-              The AI Scout will soon analyze each profile for fit, visual quality and booking
-              potential — directly on top of your existing pipeline.
-            </p>
-            <ul className="mb-4 space-y-1.5">
-              <li>• AI score from 0–100 per model</li>
-              <li>• Tags like “high potential”, “interesting”, “low fit”</li>
-              <li>• Suggestions for who to speak to next</li>
-            </ul>
-            <div className="rounded-2xl border border-dashed border-neutral-800 px-3 py-3 text-[11px] text-neutral-400">
-              <p className="mb-1 text-neutral-200">You&apos;re early.</p>
-              <p>
-                Early agencies help shape the scoring and get the most leverage when it goes
-                live. The pipeline you set up now is the foundation for your AI advantage.
-              </p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Step({ step, title, body }: { step: string; title: string; body: string }) {
-  return (
-    <li className="flex gap-3">
-      <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-semibold text-neutral-100">
-        {step}
-      </div>
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-neutral-50">{title}</p>
-        <p className="text-[12px] text-neutral-400">{body}</p>
-      </div>
-    </li>
-  );
-}
-
-/* ===============================
-   PIPELINE SECTION
-================================ */
-
-function PipelineSection() {
-  return (
-    <section id="pipeline" className="border-b border-neutral-900/80 bg-black/80 py-14">
-      <div className="mx-auto flex max-w-6xl flex-col gap-7 px-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold tracking-tight">
-              A pipeline that feels like scouting, not software.
-            </h2>
-            <p className="max-w-xl text-[12px] text-neutral-400">
-              Incoming, Shortlisted, Contacted, Scouted, Archived — the stages you already
-              use are now visible in one, calm interface your whole team can read at a glance.
-            </p>
-          </div>
-          <Link
-            href="/dashboard"
-            className="rounded-full border border-neutral-700 px-4 py-1.5 text-[11px] text-neutral-200 transition hover:border-neutral-400 hover:text-white"
-          >
-            Jump into live dashboard
-          </Link>
-        </div>
-
-        <div className="mt-1 overflow-x-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.5, type: "spring", stiffness: 80 }}
-            className="min-w-[680px] rounded-3xl border border-neutral-800 bg-neutral-950/90 p-4"
-          >
-            <div className="mb-3 flex items-center justify-between text-[11px] text-neutral-400">
-              <span>Pipeline preview</span>
-              <span className="text-neutral-500">
-                Simulated view · Your real dashboard uses live data
-              </span>
-            </div>
-            <div className="flex gap-3 text-[11px]">
-              {PIPELINE_COLUMNS.map((name, index) => (
-                <PipelineColumn key={name} name={name} accent={index === 1} />
-              ))}
-            </div>
-          </motion.div>
-        </div>
-
-        <p className="text-[11px] text-neutral-500">
-          In your real dashboard, columns sync live with your apply link and every card opens
-          a full model profile with photos, socials and internal notes.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function PipelineColumn({ name, accent }: { name: string; accent?: boolean }) {
-  return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      transition={{ type: "spring", stiffness: 150, damping: 18 }}
-      className={`flex min-w-[140px] flex-1 flex-col gap-2 rounded-2xl border bg-neutral-900/85 p-3 ${
-        accent ? "border-indigo-500/60 shadow-[0_0_24px_rgba(79,70,229,0.4)]" : "border-neutral-800"
-      }`}
-    >
-      <div className="mb-1 flex items-center justify-between">
-        <span className="text-[11px] text-neutral-200">{name}</span>
-        <span className="text-[10px] text-neutral-500">3 models</span>
-      </div>
-      <ColumnCard name="Amira · Berlin" score="94" />
-      <ColumnCard name="Luca · Milan" score="89" />
-      <ColumnCard name="Noah · Amsterdam" score="86" />
-    </motion.div>
-  );
-}
-
-function ColumnCard({ name, score }: { name: string; score: string }) {
-  return (
-    <div className="rounded-xl border border-neutral-800 bg-neutral-950/82 px-2.5 py-1.5">
-      <p className="text-[11px] text-neutral-100">{name}</p>
-      <p className="flex items-center justify-between text-[10px] text-neutral-500">
-        <span>AI score</span>
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
-          {score}
-        </span>
-      </p>
+    <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800">
+      <p className="text-[11px] text-slate-500 mb-1">{step}</p>
+      <h3 className="text-sm font-semibold text-slate-50 mb-1">{title}</h3>
+      <p className="text-xs text-slate-300 leading-relaxed">{desc}</p>
     </div>
   );
 }
 
-/* ===============================
-   PERSONAS (simpel, rustig)
-================================ */
-
-function PersonasSection() {
+function Card({ title, desc }: { title: string; desc: string }) {
   return (
-    <section
-      id="personas"
-      className="border-b border-neutral-900/80 bg-gradient-to-b from-black/82 via-neutral-950/82 to-black/90 py-14"
-    >
-      <div className="mx-auto max-w-6xl px-4 space-y-7">
-        <div className="max-w-xl space-y-2">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Built for the three people who actually move the industry.
-          </h2>
-          <p className="text-[12px] text-neutral-400">
-            The AI Scout is calibrated to how real agencies operate — from directors, to head
-            scouts, to the newest person in the group chat.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <PersonaCard
-            title="Agency director"
-            subtitle="Wants clarity & focus."
-            bullets={[
-              "See the entire pipeline in one calm view.",
-              "Know which models are moving, which are stuck.",
-              "Get reporting without digging through chats.",
-            ]}
-          />
-          <PersonaCard
-            title="Head scout"
-            subtitle="Wants speed & signal."
-            bullets={[
-              "Never lose a strong profile in the noise.",
-              "Track who was contacted, when and why.",
-              "Route applications to the right person instantly.",
-            ]}
-          />
-          <PersonaCard
-            title="Junior scout"
-            subtitle="Wants a clear next step."
-            bullets={[
-              "Always know who to contact next.",
-              "See context before reaching out.",
-              "Learn the agency’s standards from the pipeline itself.",
-            ]}
-          />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function PersonaCard({
-  title,
-  subtitle,
-  bullets,
-}: {
-  title: string;
-  subtitle: string;
-  bullets: string[];
-}) {
-  return (
-    <motion.div
-      whileHover={{ y: -6, scale: 1.01 }}
-      transition={{ type: "spring", stiffness: 150, damping: 16 }}
-      className="relative overflow-hidden rounded-3xl border border-neutral-800 bg-neutral-950/84 p-4 text-[12px] shadow-[0_26px_80px_rgba(0,0,0,0.9)]"
-    >
-      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br from-indigo-500/26 via-emerald-500/18 to-sky-500/18 blur-2xl opacity-80" />
-      <div className="relative space-y-2">
-        <p className="text-xs font-semibold text-neutral-100">{title}</p>
-        <p className="text-[11px] text-neutral-400">{subtitle}</p>
-        <ul className="space-y-1.5 text-[11px] text-neutral-300">
-          {bullets.map((b) => (
-            <li key={b}>• {b}</li>
-          ))}
-        </ul>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ===============================
-   CTA & FOOTER
-================================ */
-
-function BottomCTA() {
-  return (
-    <section className="border-b border-neutral-900/80 bg-gradient-to-r from-indigo-600/18 via-violet-600/12 to-emerald-500/14">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 px-4 py-11 text-center lg:flex-row lg:text-left">
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold tracking-tight">
-            Ready to see your talent universe in one calm dashboard?
-          </h2>
-          <p className="max-w-xl text-[12px] text-neutral-100">
-            Log in, generate your apply link and send your next campaigns into The AI Scout
-            instead of someone&apos;s inbox. One link in — a structured pipeline out.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/login"
-            className="rounded-full bg-white px-4 py-2 text-[12px] font-medium text-black transition hover:bg-neutral-200"
-          >
-            Log in to dashboard
-          </Link>
-          <a
-            href="#how-it-works"
-            className="rounded-full border border-neutral-800 px-3 py-1.5 text-[11px] text-neutral-200 transition hover:border-neutral-500 hover:text-white"
-          >
-            Walk through the flow
-          </a>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SiteFooter() {
-  return (
-    <footer className="border-t border-neutral-900/80 bg-black">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-5 text-[11px] text-neutral-500 sm:flex-row">
-        <span>© {new Date().getFullYear()} The AI Scout. All rights reserved.</span>
-        <span className="text-neutral-600">Built for agencies that actually move fast.</span>
-      </div>
-    </footer>
+    <div className="p-4 bg-slate-900/45 rounded-2xl border border-slate-800">
+      <h3 className="text-sm font-semibold text-slate-50 mb-1">{title}</h3>
+      <p className="text-xs text-slate-300 leading-relaxed">{desc}</p>
+    </div>
   );
 }
