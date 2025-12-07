@@ -10,6 +10,7 @@ class Chat(Base):
     model_id = Column(Integer, ForeignKey("models.id"))
     agency_id = Column(Integer, nullable=True)  # later koppelen
     is_open = Column(Boolean, default=True)
+    is_archived = Column(Boolean, default=False)  # Archive functionality
 
     # NEW
     last_message = Column(String, nullable=True)

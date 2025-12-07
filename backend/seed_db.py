@@ -22,28 +22,32 @@ def seed_database():
                 age=21,
                 height_cm=176,
                 country="Netherlands",
-                status="perfectFit"
+                status="perfectFit",
+                ai_category="perfectFit"
             ),
             Model(
                 name="Emma Li",
                 age=19,
                 height_cm=170,
                 country="China",
-                status="goodFit"
+                status="goodFit",
+                ai_category="goodFit"
             ),
             Model(
                 name="Mila Rossi",
                 age=22,
                 height_cm=173,
                 country="Italy",
-                status="lowPotential"
+                status="lowPotential",
+                ai_category="lowPotential"
             ),
             Model(
                 name="Ava Johnson",
                 age=20,
                 height_cm=174,
                 country="USA",
-                status="active"
+                status="active",
+                ai_category=None
             ),
         ]
         

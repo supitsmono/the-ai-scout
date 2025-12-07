@@ -35,10 +35,30 @@ export default function ModelProfilePanel({ model, onClose }: Props) {
   if (!model) return null;
 
   // Normalize photos - handle both string arrays and PhotoObj arrays
-  const photos: PhotoObj[] =
-    model.photos?.map((p: any) =>
+  // Also check if photos exist in model data, otherwise use placeholder
+  let photos: PhotoObj[] = [];
+  
+  if (model.photos && Array.isArray(model.photos) && model.photos.length > 0) {
+    photos = model.photos.map((p: any) =>
       typeof p === "string" ? { url: p, type: "" } : p
-    ) ?? [];
+    );
+  } else {
+    // Use placeholder photos if none available
+    photos = [
+      {
+        url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
+        type: "Full Face",
+      },
+      {
+        url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg",
+        type: "Side Profile",
+      },
+      {
+        url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg",
+        type: "Full Body",
+      },
+    ];
+  }
 
   // Use first photo as fallback if no photos array
   const defaultPhoto =
@@ -58,15 +78,7 @@ export default function ModelProfilePanel({ model, onClose }: Props) {
   const displayStatus = model.status || "active";
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ x: 600 }}
-        animate={{ x: 0 }}
-        exit={{ x: 600 }}
-        transition={{ type: "spring", stiffness: 120, damping: 20 }}
-        className="fixed top-0 right-0 h-full w-[600px] bg-[#050505] border-l border-white/10 z-50 overflow-y-auto shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="h-full w-full bg-[#050505] overflow-y-auto">
         {/* HEADER */}
         <div className="sticky top-0 bg-[#050505] z-10 flex items-center justify-between px-6 py-4 border-b border-white/10 backdrop-blur-sm">
           <div>
@@ -349,8 +361,7 @@ export default function ModelProfilePanel({ model, onClose }: Props) {
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
-    </AnimatePresence>
+    </div>
   );
 }
 

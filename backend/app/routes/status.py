@@ -103,8 +103,9 @@ def contact_model(model_id: int, db: Session = Depends(get_db)):
             }
         raise HTTPException(status_code=400, detail="Model already contacted")
 
-    # STEP 1 — Update model status
+    # STEP 1 — Update model status and pipeline stage
     model.status = "contacted"
+    model.pipeline_stage = "contacted"  # Update pipeline stage
     db.add(model)
 
     # STEP 2 — Create chat entry

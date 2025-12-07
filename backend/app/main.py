@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import all routes
-from app.routes import models, status, chats
+from app.routes import models, status, chats, ai
 from app.database import Base, engine
 
 # Import all models to ensure tables are created
@@ -39,6 +39,13 @@ app.include_router(status.router, tags=["Status & Contact"])
 
 # Chats (Inbox, messages, send-message)
 app.include_router(chats.router, prefix="/chats", tags=["Chats"])
+
+# AI Classification
+app.include_router(ai.router, tags=["AI Classification"])
+
+# Pipeline
+from app.routes import pipeline
+app.include_router(pipeline.router, tags=["Pipeline"])
 
 # ============================
 # ROOT ENDPOINT

@@ -23,6 +23,7 @@ class ChatOut(BaseModel):
     last_message: Optional[str] = None
     last_timestamp: Optional[datetime] = None
     unread_count: int
+    is_archived: bool = False
     model: Optional[ModelResponse] = None  # Include full model data
 
     # Pydantic v2 config

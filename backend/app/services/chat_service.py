@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 
 from app.models.chat import Chat
 from app.models.message import Message
@@ -15,8 +16,11 @@ def get_chat(db: Session, chat_id: int) -> Optional[Chat]:
     return chat
 
 
-def list_chats(db: Session) -> List[Chat]:
-    chats = db.query(Chat).order_by(Chat.last_timestamp.desc()).all()
+def list_chats(db: Session, include_archived: bool = False) -> List[Chat]:
+    query = db.query(Chat)
+    if not include_archived:
+        query = query.filter(Chat.is_archived == False)
+    chats = query.order_by(Chat.last_timestamp.desc()).all()
     # Load model data for each chat
     for chat in chats:
         chat.model = db.query(Model).filter(Model.id == chat.model_id).first()
@@ -60,6 +64,7 @@ def send_message(
 ) -> Message:
     """
     Stuurt een bericht in een bestaande chat en update de chat-meta.
+    Unread count wordt alleen verhoogd voor berichten van het model (niet agency).
     """
     chat = get_chat(db, chat_id)
     if not chat:
@@ -72,7 +77,12 @@ def send_message(
     )
 
     chat.last_message = text
-    chat.unread_count += 1  # later differentiëren per user
+    chat.last_timestamp = func.now()
+    
+    # Alleen unread count verhogen als het model een bericht stuurt (niet agency)
+    if sender == "model":
+        chat.unread_count += 1
+    # Als agency stuurt, blijft unread_count hetzelfde (agency heeft al gelezen)
 
     db.add(msg)
     db.add(chat)
