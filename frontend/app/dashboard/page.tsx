@@ -1,14 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ModelCard from "./ModelCard";
 import ModelDetailPanel from "./ModelDetailPanel";
 import StatusBadge from "@/components/ui/StatusBadge";
 
-// ----------------------
-// DUMMY MODELS
-// ----------------------
-const dummyModels = [
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+type ModelStatus =
+  | "perfectFit"
+  | "goodFit"
+  | "lowPotential"
+  | "favorite"
+  | "rejected"
+  | "contacted";
+
+type Photo = {
+  url: string;
+  type?: string;
+};
+
+type Measurements = {
+  bust: number;
+  waist: number;
+  hips: number;
+};
+
+export type DashboardModel = {
+  id: number;
+  name: string;
+  age: number;
+  height: number;
+  country: string;
+  photos: Photo[];
+  measurements: Measurements;
+  motivation: string;
+  status: ModelStatus;
+};
+
+const dummyModels: DashboardModel[] = [
   {
     id: 1,
     name: "Sophia Berg",
@@ -16,12 +47,22 @@ const dummyModels = [
     height: 176,
     country: "Netherlands",
     photos: [
-      { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Full Face" },
-      { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Side Profile" },
-      { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Full Body" }
+      {
+        url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
+        type: "Full Face",
+      },
+      {
+        url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg",
+        type: "Side Profile",
+      },
+      {
+        url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg",
+        type: "Full Body",
+      },
     ],
     measurements: { bust: 82, waist: 60, hips: 90 },
-    motivation: "Modeling allows me to express myself creatively while connecting with inspiring people.",
+    motivation:
+      "Modeling allows me to express myself creatively while connecting with inspiring people.",
     status: "perfectFit",
   },
   {
@@ -31,8 +72,14 @@ const dummyModels = [
     height: 170,
     country: "China",
     photos: [
-      { url: "https://images.pexels.com/photos/371160/pexels-photo-371160.jpeg", type: "Full Face" },
-      { url: "https://images.pexels.com/photos/458718/pexels-photo-458718.jpeg", type: "Full Body" }
+      {
+        url: "https://images.pexels.com/photos/371160/pexels-photo-371160.jpeg",
+        type: "Full Face",
+      },
+      {
+        url: "https://images.pexels.com/photos/458718/pexels-photo-458718.jpeg",
+        type: "Full Body",
+      },
     ],
     measurements: { bust: 80, waist: 58, hips: 88 },
     motivation: "I love the fashion industry and want to grow internationally.",
@@ -45,8 +92,14 @@ const dummyModels = [
     height: 173,
     country: "Italy",
     photos: [
-      { url: "https://images.pexels.com/photos/204611/pexels-photo-204611.jpeg", type: "Full Body" },
-      { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Close-Up" }
+      {
+        url: "https://images.pexels.com/photos/204611/pexels-photo-204611.jpeg",
+        type: "Full Body",
+      },
+      {
+        url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
+        type: "Close-Up",
+      },
     ],
     measurements: { bust: 85, waist: 61, hips: 92 },
     motivation: "Modeling gives me confidence and opens opportunities.",
@@ -59,7 +112,10 @@ const dummyModels = [
     height: 174,
     country: "USA",
     photos: [
-      { url: "https://images.pexels.com/photos/428361/pexels-photo-428361.jpeg", type: "Full Face" }
+      {
+        url: "https://images.pexels.com/photos/428361/pexels-photo-428361.jpeg",
+        type: "Full Face",
+      },
     ],
     measurements: { bust: 83, waist: 62, hips: 91 },
     motivation: "Looking for international opportunities and runway projects.",
@@ -67,9 +123,6 @@ const dummyModels = [
   },
 ];
 
-// ----------------------
-// TABS
-// ----------------------
 const tabs = [
   { key: "all", label: "ALL" },
   { key: "perfectFit", label: "PERFECT FIT" },
@@ -80,21 +133,107 @@ const tabs = [
   { key: "contacted", label: "CONTACTED" },
 ];
 
-// ----------------------
-// COMPONENT
-// ----------------------
 export default function DashboardPage() {
-  const [selectedTab, setSelectedTab] = useState("all");
-  const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedTab, setSelectedTab] = useState<string>("all");
+  const [models, setModels] = useState<DashboardModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState<DashboardModel | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load models from backend
+  useEffect(() => {
+    const loadModels = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`${API_BASE}/models`);
+        if (!res.ok) {
+          throw new Error(`Failed to load models: ${res.statusText}`);
+        }
+        const backendModels = await res.json();
+        
+        // Transform backend models to DashboardModel format
+        // For now, add placeholder data for photos, measurements, motivation
+        // These will be added to the backend model later
+        const transformedModels: DashboardModel[] = backendModels.map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          age: m.age || 0,
+          height: m.height_cm || m.height || 0,
+          country: m.country || "Unknown",
+          photos: [
+            {
+              url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
+              type: "Full Face",
+            },
+          ],
+          measurements: {
+            bust: 82,
+            waist: 60,
+            hips: 90,
+          },
+          motivation: "Passionate about modeling and ready to work.",
+          status: (m.status || "active") as ModelStatus,
+        }));
+        
+        setModels(transformedModels);
+      } catch (err) {
+        console.error("Error loading models:", err);
+        setError(err instanceof Error ? err.message : "Failed to load models");
+        // Fallback to dummy data if backend fails
+        setModels(dummyModels);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadModels();
+  }, []);
 
   const filteredModels =
     selectedTab === "all"
-      ? dummyModels.filter((m) => m.status !== "contacted")
-      : dummyModels.filter((m) => m.status === selectedTab);
+      ? models.filter((m) => m.status !== "contacted")
+      : models.filter((m) => m.status === selectedTab);
+
+  const handleContact = async (modelId: number, chatId?: number) => {
+    // Update local state
+    setModels((prev) =>
+      prev.map((m) =>
+        m.id === modelId ? { ...m, status: "contacted" } : m
+      )
+    );
+    setSelectedModel(null);
+    setSelectedTab("contacted");
+    
+    // Navigate to chat if chatId is provided
+    if (chatId) {
+      window.location.href = `/chats/${chatId}`;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full flex items-center justify-center p-6">
+        <div className="text-gray-400">Loading models...</div>
+      </div>
+    );
+  }
+
+  if (error && models.length === 0) {
+    return (
+      <div className="w-full flex flex-col items-center justify-center p-6">
+        <div className="text-red-400 mb-4">Error: {error}</div>
+        <div className="text-gray-400 text-sm">
+          Using dummy data. Make sure the backend is running on {API_BASE}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex flex-col p-6 relative">
-
       {/* TABS */}
       <div className="flex gap-8 mb-8 border-b border-white/10 pb-2">
         {tabs.map((tab) => {
@@ -133,11 +272,15 @@ export default function DashboardPage() {
                   className="w-16 h-20 object-cover rounded-lg"
                 />
                 <div>
-                  <h3 className="text-white text-lg font-semibold">{model.name}</h3>
+                  <h3 className="text-white text-lg font-semibold">
+                    {model.name}
+                  </h3>
                   <p className="text-gray-400 text-sm">
                     {model.age} y/o • {model.height} cm • {model.country}
                   </p>
-                  <p className="text-gray-500 text-xs mt-1 italic">No messages yet</p>
+                  <p className="text-gray-500 text-xs mt-1 italic">
+                    No messages yet
+                  </p>
                 </div>
               </div>
 
@@ -169,6 +312,7 @@ export default function DashboardPage() {
       <ModelDetailPanel
         model={selectedModel}
         onClose={() => setSelectedModel(null)}
+        onContact={handleContact}
       />
     </div>
   );

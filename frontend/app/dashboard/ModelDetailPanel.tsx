@@ -3,13 +3,27 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import StatusBadge from "@/components/ui/StatusBadge";
+import type { DashboardModel } from "./page";
 
 type PhotoObj = {
   url: string;
   type?: string;
 };
 
-export default function ModelDetailPanel({ model, onClose }) {
+type Props = {
+  model: DashboardModel | null;
+  onClose: () => void;
+  onContact?: (modelId: number, chatId?: number) => void;
+};
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+export default function ModelDetailPanel({
+  model,
+  onClose,
+  onContact,
+}: Props) {
   if (!model) return null;
 
   const photos: PhotoObj[] =
@@ -19,9 +33,72 @@ export default function ModelDetailPanel({ model, onClose }) {
 
   const [photoIndex, setPhotoIndex] = useState(0);
   const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+  const [isContacting, setIsContacting] = useState(false);
 
-  const nextPhoto = () => setPhotoIndex((prev) => (prev + 1) % photos.length);
-  const prevPhoto = () => setPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  const nextPhoto = () =>
+    setPhotoIndex((prev) => (prev + 1) % photos.length);
+  const prevPhoto = () =>
+    setPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+
+  const handleContactClick = async () => {
+    if (!model || isContacting) return;
+    setIsContacting(true);
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/models/${model.id}/contact`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        let errorMessage = "Something went wrong contacting this model.";
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorMessage;
+        } catch {
+          // If error is not JSON, use the text or default message
+          if (res.status === 404) {
+            errorMessage = "Model not found in database. Please refresh the page.";
+          } else if (res.status === 400) {
+            errorMessage = errorText || "This model has already been contacted.";
+          }
+        }
+        
+        console.error("Contact error:", res.status, errorText);
+        alert(errorMessage);
+        return;
+      }
+
+      const data = await res.json();
+      
+      // Handle both response formats:
+      // 1. { model: ..., chat_id: number } from models.py
+      // 2. { message, model_id, chat_id, status } from status.py
+      const chatId = data.chat_id as number | undefined;
+
+      if (onContact) {
+        onContact(model.id, chatId);
+      }
+      
+      // Close the panel after successful contact
+      onClose();
+    } catch (err) {
+      console.error("Network error:", err);
+      const errorMessage = err instanceof Error 
+        ? `Network error: ${err.message}. Make sure the backend is running on ${API_BASE}`
+        : "Network error while contacting this model. Please check if the backend is running.";
+      alert(errorMessage);
+    } finally {
+      setIsContacting(false);
+    }
+  };
 
   return (
     <>
@@ -46,7 +123,10 @@ export default function ModelDetailPanel({ model, onClose }) {
             </div>
           </div>
 
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-sm">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-sm"
+          >
             Close ✕
           </button>
         </div>
@@ -89,7 +169,9 @@ export default function ModelDetailPanel({ model, onClose }) {
                 <div
                   key={i}
                   className={`relative w-20 h-24 rounded-lg overflow-hidden cursor-pointer border ${
-                    i === photoIndex ? "border-purple-500" : "border-white/10 opacity-70 hover:opacity-100"
+                    i === photoIndex
+                      ? "border-purple-500"
+                      : "border-white/10 opacity-70 hover:opacity-100"
                   }`}
                   onClick={() => setPhotoIndex(i)}
                 >
@@ -102,21 +184,37 @@ export default function ModelDetailPanel({ model, onClose }) {
           {/* MEASUREMENTS + MOTIVATION */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <h3 className="text-sm font-semibold text-white mb-2">Measurements</h3>
-              <p className="text-gray-300 text-sm">Bust: {model.measurements?.bust} cm</p>
-              <p className="text-gray-300 text-sm">Waist: {model.measurements?.waist} cm</p>
-              <p className="text-gray-300 text-sm">Hips: {model.measurements?.hips} cm</p>
+              <h3 className="text-sm font-semibold text-white mb-2">
+                Measurements
+              </h3>
+              <p className="text-gray-300 text-sm">
+                Bust: {model.measurements?.bust} cm
+              </p>
+              <p className="text-gray-300 text-sm">
+                Waist: {model.measurements?.waist} cm
+              </p>
+              <p className="text-gray-300 text-sm">
+                Hips: {model.measurements?.hips} cm
+              </p>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-white mb-2">Motivation</h3>
-              <p className="text-gray-300 text-sm leading-relaxed">{model.motivation}</p>
+              <h3 className="text-sm font-semibold text-white mb-2">
+                Motivation
+              </h3>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                {model.motivation}
+              </p>
             </div>
           </div>
 
           {/* CONTACT BUTTON */}
-          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-semibold text-base">
-            🟣 Contact Model
+          <button
+            onClick={handleContactClick}
+            disabled={isContacting}
+            className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold text-base"
+          >
+            {isContacting ? "Contacting..." : "🟣 Contact Model"}
           </button>
         </div>
       </motion.div>

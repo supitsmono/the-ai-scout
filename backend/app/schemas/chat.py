@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from app.schemas.model import ModelResponse
 
 
 class MessageBase(BaseModel):
@@ -23,6 +23,7 @@ class ChatOut(BaseModel):
     last_message: Optional[str] = None
     last_timestamp: Optional[datetime] = None
     unread_count: int
+    model: Optional[ModelResponse] = None  # Include full model data
 
     # Pydantic v2 config
     model_config = ConfigDict(from_attributes=True)

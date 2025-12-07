@@ -85,10 +85,22 @@ def contact_model(model_id: int, db: Session = Depends(get_db)):
 
     model = db.query(Model).filter(Model.id == model_id).first()
     if not model:
-        raise HTTPException(status_code=404, detail="Model not found")
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Model with ID {model_id} not found in database. Please refresh the page or check if the model exists."
+        )
 
     # Only contact if not already contacted
     if model.status == "contacted":
+        # Check if chat already exists
+        existing_chat = db.query(Chat).filter(Chat.model_id == model_id).first()
+        if existing_chat:
+            return {
+                "message": "Model already contacted",
+                "model_id": model.id,
+                "chat_id": existing_chat.id,
+                "status": model.status
+            }
         raise HTTPException(status_code=400, detail="Model already contacted")
 
     # STEP 1 — Update model status
@@ -105,6 +117,7 @@ def contact_model(model_id: int, db: Session = Depends(get_db)):
     db.add(chat)
     db.commit()
     db.refresh(chat)
+    db.refresh(model)
 
     return {
         "message": "Model contacted successfully",

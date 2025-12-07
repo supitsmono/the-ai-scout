@@ -3,6 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Import all routes
 from app.routes import models, status, chats
+from app.database import Base, engine
+
+# Import all models to ensure tables are created
+from app.models import model, chat, message
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="The AI Scout Backend",

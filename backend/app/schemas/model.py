@@ -1,14 +1,27 @@
-from pydantic import BaseModel, ConfigDict
+from typing import Optional
 
-class ModelBase(BaseModel):
+from pydantic import BaseModel
+
+
+class ModelCreate(BaseModel):
     name: str
     age: int
     height_cm: int
     country: str
 
-class ModelCreate(ModelBase):
-    pass
 
-class ModelOut(ModelBase):
+class ModelResponse(BaseModel):
     id: int
-    model_config = ConfigDict(from_attributes=True)
+    name: str
+    age: int
+    height_cm: int
+    country: str
+    status: str
+
+    class Config:
+        orm_mode = True
+
+
+class ModelContactResponse(BaseModel):
+    model: ModelResponse
+    chat_id: int
