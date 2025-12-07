@@ -18,3 +18,10 @@ frontend/.vercel/
 *.log
 .DS_Store
 Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
