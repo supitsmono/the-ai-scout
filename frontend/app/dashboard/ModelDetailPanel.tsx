@@ -1,97 +1,125 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import Image from "next/image";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import StatusBadge from "@/components/ui/StatusBadge";
 
-export default function ModelDetailPanel({
-  model,
-  onClose,
-}: {
-  model: any;
-  onClose: () => void;
-}) {
+type PhotoObj = {
+  url: string;
+  type?: string;
+};
+
+export default function ModelDetailPanel({ model, onClose }) {
   if (!model) return null;
 
-  return (
-    <AnimatePresence>
-      {/* Backdrop */}
-      <motion.div
-        className="fixed inset-0 bg-black/60 z-40"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.5 }}
-        exit={{ opacity: 0 }}
-      />
+  const photos: PhotoObj[] =
+    model.photos?.map((p: any) =>
+      typeof p === "string" ? { url: p, type: "" } : p
+    ) ?? [];
 
-      {/* Panel */}
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+
+  const nextPhoto = () => setPhotoIndex((prev) => (prev + 1) % photos.length);
+  const prevPhoto = () => setPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+
+  return (
+    <>
       <motion.div
-        className="fixed right-0 top-0 h-full w-full sm:w-[420px] bg-slate-950 border-l border-slate-800 z-50 flex flex-col"
         initial={{ x: 420 }}
         animate={{ x: 0 }}
         exit={{ x: 420 }}
-        transition={{ type: "spring", stiffness: 280, damping: 32 }}
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        className="fixed top-0 right-0 h-full w-[600px] bg-[#050505] border-l border-white/10 z-40 overflow-y-auto"
       >
-        {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+        {/* HEADER */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>
-            <h2 className="text-[15px] font-semibold">{model.name}</h2>
-            <p className="text-[11px] text-slate-500">
-              {model.age} · {model.city}, {model.country}
+            <h2 className="text-2xl font-semibold text-white">{model.name}</h2>
+
+            <p className="text-gray-400 text-sm">
+              {model.age} y/o • {model.height} cm • {model.country}
             </p>
+
+            <div className="mt-2">
+              <StatusBadge status={model.status} />
+            </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white text-[20px]"
-          >
-            ✖
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-sm">
+            Close ✕
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* MAIN CONTENT */}
+        <div className="px-6 py-6 space-y-6">
+          {/* PHOTO VIEWER */}
+          <div className="relative w-full h-[360px] rounded-xl overflow-hidden bg-black">
+            <img
+              src={photos[photoIndex].url}
+              className="w-full h-full object-cover cursor-pointer"
+              onClick={() => setFullscreenIndex(photoIndex)}
+            />
 
-          {/* Photos */}
-          <section>
-            <h3 className="text-[12px] text-slate-400 mb-2">Photos</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {(model.photos ?? []).map((url: string, i: number) => (
+            {photos[photoIndex].type && (
+              <div className="absolute bottom-3 left-3 bg-black/70 text-white text-xs px-3 py-1 rounded-full">
+                {photos[photoIndex].type}
+              </div>
+            )}
+
+            <button
+              onClick={prevPhoto}
+              className="absolute top-1/2 left-3 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded-full text-lg"
+            >
+              ‹
+            </button>
+
+            <button
+              onClick={nextPhoto}
+              className="absolute top-1/2 right-3 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded-full text-lg"
+            >
+              ›
+            </button>
+          </div>
+
+          {/* THUMBNAILS */}
+          {photos.length > 1 && (
+            <div className="flex gap-3">
+              {photos.map((p, i) => (
                 <div
                   key={i}
-                  className="relative h-32 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden"
+                  className={`relative w-20 h-24 rounded-lg overflow-hidden cursor-pointer border ${
+                    i === photoIndex ? "border-purple-500" : "border-white/10 opacity-70 hover:opacity-100"
+                  }`}
+                  onClick={() => setPhotoIndex(i)}
                 >
-                  <Image src={url} alt="" fill className="object-cover" />
+                  <img src={p.url} className="w-full h-full object-cover" />
                 </div>
               ))}
-
-              {(!model.photos || model.photos.length === 0) && (
-                <p className="text-[11px] text-slate-600 col-span-2">
-                  No photos available.
-                </p>
-              )}
             </div>
-          </section>
-
-          {/* AI Score */}
-          <section>
-            <h3 className="text-[13px] font-semibold">AI Score</h3>
-            <div className="mt-2 p-3 border border-slate-800 rounded-lg bg-slate-900">
-              <p className="text-[28px] font-bold text-sky-300">{model.score}</p>
-              <p className="text-[11px] text-slate-400">Analyzed for agency fit.</p>
-            </div>
-          </section>
-
-          {/* Motivation */}
-          {model.motivation && (
-            <section>
-              <h3 className="text-[13px] font-semibold">Motivation</h3>
-              <p className="text-[12px] text-slate-300 mt-2 leading-relaxed whitespace-pre-wrap">
-                {model.motivation}
-              </p>
-            </section>
           )}
+
+          {/* MEASUREMENTS + MOTIVATION */}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-sm font-semibold text-white mb-2">Measurements</h3>
+              <p className="text-gray-300 text-sm">Bust: {model.measurements?.bust} cm</p>
+              <p className="text-gray-300 text-sm">Waist: {model.measurements?.waist} cm</p>
+              <p className="text-gray-300 text-sm">Hips: {model.measurements?.hips} cm</p>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-white mb-2">Motivation</h3>
+              <p className="text-gray-300 text-sm leading-relaxed">{model.motivation}</p>
+            </div>
+          </div>
+
+          {/* CONTACT BUTTON */}
+          <button className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-semibold text-base">
+            🟣 Contact Model
+          </button>
         </div>
       </motion.div>
-    </AnimatePresence>
+    </>
   );
 }

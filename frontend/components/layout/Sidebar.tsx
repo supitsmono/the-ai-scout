@@ -1,55 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
 
-const navItems = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/incoming", label: "Incoming" },
-  { href: "/dashboard/shortlisted", label: "Shortlisted" },
-  { href: "/dashboard/contacted", label: "Contacted" },
-  { href: "/dashboard/scouted", label: "Scouted" },
-  { href: "/dashboard/archived", label: "Archived" },
-];
+export default function Sidebar() {
+  const pathname = usePathname();
 
-export default function Sidebar({ activePath }: { activePath: string | null }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const linkClasses = (path: string) =>
+    `
+      block px-6 py-3 rounded-xl font-semibold text-sm transition
+      ${pathname === path
+        ? "bg-purple-600 text-white shadow-lg shadow-purple-900/20"
+        : "text-gray-400 hover:text-white hover:bg-white/5"}
+    `;
 
   return (
-    <aside
-      className={`h-screen border-r border-neutral-800 bg-black/60 backdrop-blur-2xl transition-all duration-300 ease-out flex flex-col ${collapsed ? "w-16" : "w-64"}`}
-    >
-      <div className="flex items-center justify-between px-4 h-14 border-b border-neutral-800">
-        {!collapsed && (
-          <div className="font-semibold text-sm tracking-tight">
-            The AI Scout
-          </div>
-        )}
-        <button
-          className="text-xs text-neutral-500 hover:text-neutral-200 transition"
-          onClick={() => setCollapsed((c) => !c)}
-        >
-          {collapsed ? "»" : "«"}
-        </button>
-      </div>
+    <aside className="w-64 h-full bg-[#0A0A0A] border-r border-white/10 p-6 flex flex-col">
 
-      <nav className="flex-1 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const active = activePath?.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`mx-2 flex items-center rounded-xl px-3 py-2 text-xs transition-all ${
-                active
-                  ? "bg-indigo-500/20 text-indigo-200 border border-indigo-500/50"
-                  : "text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80"
-              }`}
-            >
-              <span className="truncate">{item.label}</span>
-            </Link>
-          );
-        })}
+      <h1 className="text-2xl font-extrabold text-white mb-8">
+        AI Scout
+      </h1>
+
+      <nav className="flex flex-col gap-3">
+        <Link href="/dashboard" className={linkClasses("/dashboard")}>Dashboard</Link>
+        <Link href="/workflow" className={linkClasses("/workflow")}>Workflow</Link>
+        <Link href="/chats" className={linkClasses("/chats")}>Chats</Link>
+        <Link href="/analytics" className={linkClasses("/analytics")}>Analytics</Link>
+      </nav>
+
+      <div className="flex-grow" />
+
+      <nav className="flex flex-col gap-3">
+        <Link href="/settings" className={linkClasses("/settings")}>Settings</Link>
+        <button className="text-gray-500 hover:text-red-400 text-sm text-left px-6">
+          Logout
+        </button>
       </nav>
     </aside>
   );
