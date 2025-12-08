@@ -5,19 +5,19 @@ import { Star } from "lucide-react";
 
 const testimonials = [
     {
-        quote: "We processed 5,000 applications in 3 hours. The AI tagging is frighteningly accurate.",
+        quote: "We processed 5,000 applications in 3 hours. The AI sorting is incredibly accurate.",
         author: "Sarah Jenkins",
         role: "Head of Scouting, Elite Models",
         stars: 5,
     },
     {
-        quote: "Finally, a CRM that actually understands what a 'commercial look' is. Game changer.",
+        quote: "Finally, a system that actually understands what we're looking for. This changes everything.",
         author: "Marcus Chen",
         role: "Director, IMG Men",
         stars: 5,
     },
     {
-        quote: "The automated casting sheets save our booking table about 20 hours a week.",
+        quote: "We save hours every week. Everything is organized in one clear place.",
         author: "Elena Rodriguez",
         role: "Senior Booker, Wilhelmina",
         stars: 5,
@@ -32,7 +32,7 @@ export default function Testimonials() {
 
             <div className="container mx-auto px-6">
                 <div className="text-center mb-16">
-                    <h2 className="text-3xl font-bold text-white tracking-tight">Trusted by Industry Leaders</h2>
+                    <h2 className="text-3xl font-bold text-white tracking-tight">Trusted by Model Agencies</h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

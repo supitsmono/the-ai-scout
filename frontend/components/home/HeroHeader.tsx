@@ -24,9 +24,8 @@ export const HeroHeader = ({ setPanel }: { setPanel?: (v: any) => void }) => {
     };
 
     const navLinks = [
-        { name: "Platform", key: "features" },
-        { name: "Solutions", key: "agencies" },
-        { name: "Developers", key: "developers" },
+        { name: "Features", key: "features" },
+        { name: "For Agencies", key: "agencies" },
         { name: "Pricing", key: "pricing" },
     ];
 
@@ -74,7 +73,7 @@ export const HeroHeader = ({ setPanel }: { setPanel?: (v: any) => void }) => {
                         className="bg-white/10 hover:bg-white/20 text-white border-none rounded-full px-4 h-9 font-medium backdrop-blur-sm"
                     >
                         <Link href="/signup">
-                            Start for Free
+                            Start Free
                         </Link>
                     </Button>
                 </div>

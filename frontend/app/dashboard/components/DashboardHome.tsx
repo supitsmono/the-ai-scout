@@ -1,186 +1,328 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-    Activity,
     Users,
     ArrowUpRight,
     CheckCircle2,
     Clock,
-    MoreHorizontal,
-    Search,
-    Filter,
-    Download,
-    UserCheck,
     MessageSquare,
     Zap,
-    TrendingUp
+    TrendingUp,
+    Star,
+    Globe
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useWorkspace } from "../context/WorkspaceContext";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface Stats {
+    applied: number;
+    reviewing: number;
+    perfectFit: number;
+    goodFit: number;
+    interview: number;
+    selected: number;
+    rejected: number;
+}
+
+interface RecentModel {
+    id: number;
+    name: string;
+    initials: string;
+    status: string;
+    aiCategory: string | null;
+    age: number;
+    country: string;
+    date: string;
+}
+
 export default function DashboardHome() {
-    const { setViewMode } = useWorkspace();
+    const { setViewMode, setSelectedModel } = useWorkspace();
+    const [stats, setStats] = useState<Stats | null>(null);
+    const [recentModels, setRecentModels] = useState<RecentModel[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [totalApplications, setTotalApplications] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setLoading(true);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+            try {
+                // Load pipeline stats
+                try {
+                    const statsRes = await fetch(`${API_BASE}/pipeline/stats`, {
+                        signal: controller.signal
+                    });
+                    if (statsRes.ok) {
+                        const statsData = await statsRes.json() as Stats;
+                        setStats(statsData);
+                        const total = (Object.values(statsData) as number[]).reduce((sum: number, val: number) => sum + val, 0);
+                        setTotalApplications(total);
+                    } else {
+                        console.warn("Failed to load pipeline stats:", statsRes.status);
+                    }
+                } catch (error: any) {
+                    if (error.name !== 'AbortError') {
+                        console.error("Error loading pipeline stats:", error);
+                    }
+                }
+
+                // Load recent models
+                try {
+                    const modelsRes = await fetch(`${API_BASE}/models/?limit=5&sort_by=id&sort_order=desc`, {
+                        signal: controller.signal
+                    });
+                    if (modelsRes.ok) {
+                        const modelsData = await modelsRes.json();
+                        const recent = modelsData.models?.map((m: any) => ({
+                            id: m.id,
+                            name: m.name,
+                            initials: m.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || "??",
+                            status: m.status || m.ai_category || "active",
+                            aiCategory: m.ai_category,
+                            age: m.age || 0,
+                            country: m.country || "Unknown",
+                            date: "Just now" // TODO: Add created_at to model
+                        })) || [];
+                        setRecentModels(recent);
+                    } else {
+                        console.warn("Failed to load models:", modelsRes.status);
+                    }
+                } catch (error: any) {
+                    if (error.name !== 'AbortError') {
+                        console.error("Error loading models:", error);
+                    }
+                }
+
+                // Load unread messages count
+                try {
+                    const chatsRes = await fetch(`${API_BASE}/chats/`, {
+                        signal: controller.signal
+                    });
+                    if (chatsRes.ok) {
+                        const chats = await chatsRes.json();
+                        const unread = Array.isArray(chats) ? chats.reduce((sum: number, chat: any) => sum + (chat.unread_count || 0), 0) : 0;
+                        setUnreadCount(unread);
+                    } else {
+                        console.warn("Failed to load chats:", chatsRes.status);
+                    }
+                } catch (error: any) {
+                    if (error.name !== 'AbortError') {
+                        console.error("Error loading chats:", error);
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading dashboard data:", error);
+            } finally {
+                clearTimeout(timeoutId);
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="p-6 md:p-8 flex items-center justify-center h-full">
+                <div className="text-slate-400">Loading dashboard...</div>
+            </div>
+        );
+    }
+
+    const perfectFitCount = stats?.perfectFit || 0;
+    const goodFitCount = stats?.goodFit || 0;
+    const reviewingCount = stats?.reviewing || 0;
+    const selectedCount = stats?.selected || 0;
 
     return (
-        <div className="p-6 md:p-8 space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
+        <div className="p-4 sm:p-6 md:p-8 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto w-full">
 
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Agency Overview</h1>
-                    <p className="text-slate-500 text-sm">Welcome back, Head of Scouting</p>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-slate-300">
-                        <Download className="mr-2 h-4 w-4" /> Export Report
-                    </Button>
-                    <Button className="bg-white text-black hover:bg-slate-200">
-                        <Zap className="mr-2 h-4 w-4" /> Invite Talent
-                    </Button>
+                    <h1 className="text-2xl font-bold text-white mb-1">Dashboard</h1>
+                    <p className="text-slate-400 text-sm">Overview of your applications and pipeline</p>
                 </div>
             </div>
 
-            {/* Agency Metrics Grid */}
+            {/* Key Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
-                    label="New Applications"
-                    value="142"
-                    subtext="+12% from last week"
+                    label="Total Applications"
+                    value={totalApplications.toString()}
+                    subtext={`${perfectFitCount} Perfect Fit`}
                     icon={<Users className="text-white" />}
-                    color="bg-blue-600 shadow-blue-900/20"
+                    color="bg-cyan-500"
+                    onClick={() => setViewMode("applications")}
                 />
                 <MetricCard
-                    label="Pending Review"
-                    value="28"
-                    subtext="Requires attention"
+                    label="Perfect Fit"
+                    value={perfectFitCount.toString()}
+                    subtext="AI classified"
+                    icon={<Star className="text-white" />}
+                    color="bg-emerald-500"
+                    onClick={() => {
+                        setViewMode("applications");
+                        // TODO: Set filter to perfectFit
+                    }}
+                />
+                <MetricCard
+                    label="In Review"
+                    value={reviewingCount.toString()}
+                    subtext="Pending action"
                     icon={<Clock className="text-white" />}
-                    color="bg-amber-600 shadow-amber-900/20"
+                    color="bg-slate-500"
                 />
                 <MetricCard
-                    label="Scouted This Month"
-                    value="14"
-                    subtext="4 signed contracts"
-                    icon={<CheckCircle2 className="text-white" />}
-                    color="bg-emerald-600 shadow-emerald-900/20"
-                />
-                <MetricCard
-                    label="Response Rate"
-                    value="94%"
-                    subtext="Avg time: 2h 15m"
-                    icon={<TrendingUp className="text-white" />}
-                    color="bg-purple-600 shadow-purple-900/20"
+                    label="Unread Messages"
+                    value={unreadCount.toString()}
+                    subtext="Requires attention"
+                    icon={<MessageSquare className="text-white" />}
+                    color="bg-cyan-500"
+                    onClick={() => setViewMode("chats")}
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Recent Applications Table (2/3 width) */}
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Recent Applications (2/3 width) */}
                 <div className="lg:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <h2 className="text-lg font-bold text-white">Incoming Talent</h2>
-                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Live Feed</span>
-                        </div>
+                        <h2 className="text-lg font-bold text-white">Recent Applications</h2>
                         <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white h-auto py-1" onClick={() => setViewMode("applications")}>
                             View All <ArrowUpRight className="ml-1 w-3 h-3" />
                         </Button>
                     </div>
 
-                    <div className="bg-[#0A0A0A] border border-white/5 rounded-xl overflow-hidden shadow-sm">
-                        <Table>
-                            <TableHeader className="bg-white/[0.02] border-b border-white/5">
-                                <TableRow className="border-none hover:bg-transparent">
-                                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Candidate</TableHead>
-                                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ai Rating</TableHead>
-                                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Stats</TableHead>
-                                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Country</TableHead>
-                                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider text-right pr-6">Applied</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {dashboardData.slice(0, 7).map((candidate, i) => (
-                                    <TableRow key={i} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors group cursor-pointer h-12">
-                                        <TableCell className="pl-6 py-2">
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-8 w-8 border border-white/10 rounded-lg">
-                                                    <AvatarFallback className="bg-slate-800 text-[10px] text-slate-300 rounded-lg">
-                                                        {candidate.initials}
-                                                    </AvatarFallback>
-                                                    {/* Ideally AvatarImage here */}
-                                                </Avatar>
-                                                <div>
-                                                    <div className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors">
-                                                        {candidate.name}
+                    <div className="bg-[#0A0A0A] border border-white/5 rounded-xl overflow-hidden">
+                        {recentModels.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400">
+                                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p className="text-sm">No applications yet</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-white/2 border-b border-white/5">
+                                        <TableRow className="border-none hover:bg-transparent">
+                                            <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6 whitespace-nowrap">Model</TableHead>
+                                            <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">AI Category</TableHead>
+                                            <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Age</TableHead>
+                                            <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">Country</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {recentModels.map((model) => (
+                                            <TableRow 
+                                                key={model.id} 
+                                                className="border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors group cursor-pointer"
+                                                onClick={() => {
+                                                    setSelectedModel(model.id);
+                                                    setViewMode("applications");
+                                                }}
+                                            >
+                                                <TableCell className="pl-6 py-3 whitespace-nowrap">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-8 w-8 border border-white/10 rounded-lg shrink-0">
+                                                            <AvatarFallback className="bg-slate-800 text-[10px] text-slate-300 rounded-lg">
+                                                                {model.initials}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="min-w-0">
+                                                            <div className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors truncate">
+                                                                {model.name}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-2">
-                                            <StatusBadge status={candidate.status} />
-                                        </TableCell>
-                                        <TableCell className="text-slate-400 text-xs py-2">
-                                            {candidate.age}y • {candidate.gender}
-                                        </TableCell>
-                                        <TableCell className="text-slate-400 text-xs py-2">
-                                            {candidate.country}
-                                        </TableCell>
-                                        <TableCell className="text-right text-slate-500 text-xs font-mono pr-6 py-2">
-                                            {candidate.date}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                                </TableCell>
+                                                <TableCell className="py-3 whitespace-nowrap">
+                                                    <StatusBadge status={model.aiCategory || model.status} />
+                                                </TableCell>
+                                                <TableCell className="text-slate-400 text-sm py-3 whitespace-nowrap">
+                                                    {model.age}y
+                                                </TableCell>
+                                                <TableCell className="text-slate-400 text-sm py-3 whitespace-nowrap">
+                                                    <div className="flex items-center gap-1">
+                                                        <Globe className="w-3 h-3 shrink-0" />
+                                                        <span className="truncate">{model.country}</span>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Right Column: Quick Actions & Notices (1/3 width) */}
-                <div className="space-y-6">
-                    {/* Unread Messages Widget */}
+                {/* Right Column: Quick Stats (1/3 width) */}
+                <div className="space-y-4">
+                    {/* AI Category Breakdown */}
                     <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-5">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-white text-sm">Unread Messages</h3>
-                            <span className="text-xs font-bold bg-red-500 text-white px-1.5 py-0.5 rounded">3</span>
-                        </div>
+                        <h3 className="font-bold text-white text-sm mb-4">AI Classification</h3>
                         <div className="space-y-3">
-                            <div className="p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors cursor-pointer group">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="text-sm font-semibold text-white group-hover:text-purple-400 transition-colors">Emma Wilson</span>
-                                    <span className="text-[10px] text-slate-500">10m</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                                    <span className="text-sm text-slate-300">Perfect Fit</span>
                                 </div>
-                                <p className="text-xs text-slate-400 line-clamp-1">I can definitely make the shoot on Tuesday!</p>
+                                <span className="text-sm font-bold text-white">{perfectFitCount}</span>
                             </div>
-                            <div className="p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors cursor-pointer group">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className="text-sm font-semibold text-white group-hover:text-purple-400 transition-colors">Lucas Dubois</span>
-                                    <span className="text-[10px] text-slate-500">2h</span>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
+                                    <span className="text-sm text-slate-300">Good Fit</span>
                                 </div>
-                                <p className="text-xs text-slate-400 line-clamp-1">Thanks for the feedback. I've updated my...</p>
+                                <span className="text-sm font-bold text-white">{goodFitCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                                    <span className="text-sm text-slate-300">In Review</span>
+                                </div>
+                                <span className="text-sm font-bold text-white">{reviewingCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
+                                    <span className="text-sm text-slate-300">Selected</span>
+                                </div>
+                                <span className="text-sm font-bold text-white">{selectedCount}</span>
                             </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="w-full mt-3 text-xs text-slate-500 hover:text-white" onClick={() => setViewMode("chats")}>
-                            Go to Inbox
-                        </Button>
                     </div>
 
-                    {/* Quick Task */}
-                    <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-white/5 rounded-xl p-5">
-                        <div className="flex items-center gap-3 mb-3">
-                            <div className="p-2 bg-purple-500/20 rounded-lg text-purple-400">
-                                <Zap size={16} />
-                            </div>
-                            <h3 className="font-bold text-white text-sm">Quick Review</h3>
+                    {/* Quick Actions */}
+                    <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-5">
+                        <h3 className="font-bold text-white text-sm mb-4">Quick Actions</h3>
+                        <div className="space-y-2">
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-start text-slate-300 hover:text-white hover:bg-white/5"
+                                onClick={() => setViewMode("applications")}
+                            >
+                                <Users className="mr-2 h-4 w-4" />
+                                View Applications
+                            </Button>
+                            <Button 
+                                variant="ghost" 
+                                className="w-full justify-start text-slate-300 hover:text-white hover:bg-white/5"
+                                onClick={() => setViewMode("chats")}
+                            >
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                Open Chats {unreadCount > 0 && `(${unreadCount})`}
+                            </Button>
                         </div>
-                        <p className="text-xs text-slate-400 mb-4">
-                            You have <span className="text-white font-bold">28 applications</span> pending AI classification verification.
-                        </p>
-                        <Button size="sm" className="w-full bg-white text-black hover:bg-slate-200 font-semibold text-xs">
-                            Start Review Session
-                        </Button>
                     </div>
                 </div>
             </div>
@@ -189,98 +331,27 @@ export default function DashboardHome() {
     );
 }
 
-function MetricCard({ label, value, subtext, icon, color }: any) {
+function MetricCard({ label, value, subtext, icon, color, onClick }: any) {
+    // Map color to shadow
+    const shadowClass = color === "bg-cyan-500" ? "shadow-cyan-500/20" : 
+                       color === "bg-emerald-500" ? "shadow-emerald-500/20" : 
+                       "shadow-slate-500/20";
+    
     return (
-        <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-6 relative group overflow-hidden transition-all hover:border-white/10">
-            <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity`}>
-                {/* Large background icon absolute */}
-                <div className="transform scale-150 text-white">{icon}</div>
-            </div>
-
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center shadow-lg`}>
+        <div 
+            className={`bg-[#0A0A0A] border border-white/5 rounded-xl p-5 relative group overflow-hidden transition-all hover:border-white/10 hover:bg-[#0F0F0F] ${onClick ? 'cursor-pointer' : ''}`}
+            onClick={onClick}
+        >
+            <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center shadow-lg ${shadowClass}`}>
                     {icon}
                 </div>
             </div>
-
-            <div className="relative z-10">
-                <div className="text-3xl font-bold text-white mb-1 tracking-tight">{value}</div>
-                <div className="text-sm font-medium text-slate-400">{label}</div>
-                <div className="flex items-center gap-1.5 mt-2">
-                    <span className="text-[10px] font-medium bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                        {subtext}
-                    </span>
-                </div>
-            </div>
+            <div className="text-2xl font-bold text-white mb-1 tracking-tight">{value}</div>
+            <div className="text-sm font-medium text-slate-400 mb-1">{label}</div>
+            {subtext && (
+                <div className="text-xs text-slate-500 mt-1">{subtext}</div>
+            )}
         </div>
-    )
+    );
 }
-
-const dashboardData = [
-    {
-        name: "Sophia Milan",
-        initials: "SM",
-        email: "sophia.milan@example.com",
-        status: "perfectFit",
-        location: "Amsterdam, NL",
-        age: 23,
-        gender: "F",
-        country: "NL",
-        date: "2 mins ago"
-    },
-    {
-        name: "Emma Wilson",
-        initials: "EW",
-        email: "emma.w@example.com",
-        status: "goodFit",
-        location: "Berlin, DE",
-        age: 21,
-        gender: "F",
-        country: "DE",
-        date: "15 mins ago"
-    },
-    {
-        name: "Liam Verhoeven",
-        initials: "LV",
-        email: "liam.v@example.com",
-        status: "lowPotential",
-        location: "Rotterdam, NL",
-        age: 25,
-        gender: "M",
-        country: "NL",
-        date: "1 hour ago"
-    },
-    {
-        name: "Isabella Rossi",
-        initials: "IR",
-        email: "isa.rossi@example.com",
-        status: "perfectFit",
-        location: "Milan, IT",
-        age: 20,
-        gender: "F",
-        country: "IT",
-        date: "3 hours ago"
-    },
-    {
-        name: "Lucas Dubois",
-        initials: "LD",
-        email: "lucas.d@example.com",
-        status: "contacted",
-        location: "Paris, FR",
-        age: 24,
-        gender: "M",
-        country: "FR",
-        date: "5 hours ago"
-    },
-    {
-        name: "Ava Chen",
-        initials: "AC",
-        email: "ava.c@example.com",
-        status: "goodFit",
-        location: "Toronto, CA",
-        age: 22,
-        gender: "F",
-        country: "CA",
-        date: "6 hours ago"
-    }
-];

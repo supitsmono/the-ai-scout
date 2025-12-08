@@ -36,9 +36,24 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Initialize state from URL params
+  // Initialize state - don't use searchParams in useState initializer (SSR issue)
   const [state, setState] = useState<WorkspaceState>(() => {
-    // Initialize from URL params on mount
+    // Default state - will be updated in useEffect
+    return {
+      viewMode: "home",
+      selectedModelId: null,
+      activeChatId: null,
+      showRightPanel: false,
+      searchQuery: "",
+      selectedTab: "all",
+      showArchived: false,
+      sortBy: "id",
+      sortOrder: "desc",
+    };
+  });
+
+  // Initialize from URL params on mount (client-side only)
+  useEffect(() => {
     const view = searchParams.get("view");
     const model = searchParams.get("model");
     const chat = searchParams.get("chat");
@@ -57,26 +72,27 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
       mappedView = "favorites";
     } else if (view === "home") {
       mappedView = "home";
-    } else if (view) {
-      // mappedView = view as ViewMode; // Fallback
     }
 
-    return {
+    setState((prev) => ({
+      ...prev,
       viewMode: mappedView,
       selectedModelId: model ? parseInt(model) : null,
       activeChatId: chat ? parseInt(chat) : null,
-      showRightPanel: false,
       searchQuery: search || "",
       selectedTab: tab || (mappedView === "applications" ? "all" : "all"),
-      showArchived: false,
-      sortBy: "id",
-      sortOrder: "desc",
-    };
-  });
+    }));
+  }, [searchParams]);
 
   // Sync state with URL params when they change (e.g., from sidebar navigation)
+  // This handles browser back/forward buttons
   useEffect(() => {
     const view = searchParams.get("view");
+    const model = searchParams.get("model");
+    const chat = searchParams.get("chat");
+    const search = searchParams.get("search");
+    const tab = searchParams.get("tab");
+    
     let mappedView: ViewMode = "home"; // Default to home if no param
 
     if (view) {
@@ -93,40 +109,63 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
       }
     }
 
-    // Update state if it differs from URL (handles Back button AND explicit navigation consistency)
-    if (state.viewMode !== mappedView) {
-      // If we are already on home and URL is empty, this is fine.
-      // If we are on applications and URL becomes empty (Back button), this switches us to home.
-      // If we click Home button:
-      // 1. setViewMode('home') -> state=home
-      // 2. URL updates to ""
-      // 3. Effect runs. mappedView=home. state=home. No change. Correct.
-      setState((prev) => ({
+    // Only update state if URL actually changed (prevents loops)
+    setState((prev) => {
+      if (prev.viewMode === mappedView && 
+          prev.selectedModelId === (model ? parseInt(model) : null) &&
+          prev.activeChatId === (chat ? parseInt(chat) : null) &&
+          prev.searchQuery === (search || "") &&
+          prev.selectedTab === (tab || (mappedView === "applications" ? "all" : "all"))) {
+        return prev; // No changes needed
+      }
+      
+      return {
         ...prev,
         viewMode: mappedView,
-        selectedModelId: null,
-        activeChatId: null,
-      }));
-    }
-  }, [searchParams, state.viewMode]);
+        selectedModelId: model ? parseInt(model) : null,
+        activeChatId: chat ? parseInt(chat) : null,
+        searchQuery: search || "",
+        selectedTab: tab || (mappedView === "applications" ? "all" : "all"),
+        showRightPanel: prev.viewMode !== mappedView ? false : prev.showRightPanel, // Close right panel when view changes via URL
+      };
+    });
+  }, [searchParams]);
 
-  // Update URL when state changes
+  // Update URL when state changes - debounced to prevent race conditions
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (state.viewMode !== "home") params.set("view", state.viewMode); // Don't set view param for home (default)
-    if (state.selectedModelId) params.set("model", state.selectedModelId.toString());
-    if (state.activeChatId) params.set("chat", state.activeChatId.toString());
-    if (state.searchQuery) params.set("search", state.searchQuery);
+    const timeoutId = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (state.viewMode !== "home") params.set("view", state.viewMode); // Don't set view param for home (default)
+      if (state.selectedModelId) params.set("model", state.selectedModelId.toString());
+      if (state.activeChatId) params.set("chat", state.activeChatId.toString());
+      if (state.searchQuery) params.set("search", state.searchQuery);
 
-    const newUrl = `/dashboard${params.toString() ? `?${params.toString()}` : ""}`;
-    const currentUrl = window.location.pathname + window.location.search;
-    if (currentUrl !== newUrl) {
-      router.replace(newUrl, { scroll: false });
-    }
+      const newUrl = `/dashboard${params.toString() ? `?${params.toString()}` : ""}`;
+      const currentUrl = typeof window !== 'undefined' 
+        ? window.location.pathname + window.location.search 
+        : '/dashboard';
+      if (currentUrl !== newUrl) {
+        router.replace(newUrl, { scroll: false });
+      }
+    }, 50); // Small delay to batch rapid state changes
+
+    return () => clearTimeout(timeoutId);
   }, [state, router]);
 
   const setViewMode = (mode: ViewMode) => {
-    setState((prev) => ({ ...prev, viewMode: mode, selectedModelId: null, activeChatId: null }));
+    // Always update to ensure navigation works, even if already on that view
+    setState((prev) => {
+      // Only update if actually different to prevent unnecessary re-renders
+      if (prev.viewMode === mode) return prev;
+      // Close right panel when navigating away from chats
+      return { 
+        ...prev, 
+        viewMode: mode, 
+        selectedModelId: null, 
+        activeChatId: null,
+        showRightPanel: false // Always close right panel when changing views
+      };
+    });
   };
 
   const setSelectedModel = (modelId: number | null) => {
@@ -134,7 +173,16 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
   };
 
   const setActiveChat = (chatId: number | null) => {
-    setState((prev) => ({ ...prev, activeChatId: chatId, selectedModelId: null }));
+    setState((prev) => {
+      // Only close right panel if switching to a different chat
+      const shouldClosePanel = prev.activeChatId !== null && prev.activeChatId !== chatId;
+      return { 
+        ...prev, 
+        activeChatId: chatId, 
+        selectedModelId: null,
+        showRightPanel: shouldClosePanel ? false : prev.showRightPanel
+      };
+    });
   };
 
   const setShowRightPanel = (show: boolean) => {
@@ -146,7 +194,11 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
   };
 
   const setSelectedTab = (tab: string) => {
-    setState((prev) => ({ ...prev, selectedTab: tab }));
+    // Direct state update without URL sync for immediate response
+    setState((prev) => {
+      if (prev.selectedTab === tab) return prev; // Prevent unnecessary updates
+      return { ...prev, selectedTab: tab };
+    });
   };
 
   const setShowArchived = (show: boolean) => {

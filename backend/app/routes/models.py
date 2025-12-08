@@ -74,4 +74,38 @@ def get_model(
         raise HTTPException(status_code=404, detail="Model not found")
     return model
 
+
+@router.delete("/{model_id}")
+def delete_model(
+    model_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a model permanently from the system.
+    WARNING: This will also delete associated chats and messages!
+    """
+    from app.models.chat import Chat
+    from app.models.message import Message
+    
+    model = model_service.get_model(db, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    # Find and delete associated chats and messages
+    chats = db.query(Chat).filter(Chat.model_id == model_id).all()
+    for chat in chats:
+        # Delete all messages in the chat
+        db.query(Message).filter(Message.chat_id == chat.id).delete()
+        # Delete the chat
+        db.delete(chat)
+    
+    # Delete the model
+    db.delete(model)
+    db.commit()
+    
+    return {
+        "message": "Model deleted permanently",
+        "model_id": model_id
+    }
+
 # Note: Contact endpoint is in status.py to avoid route conflicts

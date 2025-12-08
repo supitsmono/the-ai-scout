@@ -8,18 +8,18 @@ export default function HowItWorks({ setPanel }: { setPanel: (v: PanelKey | null
     const steps = [
         {
             number: "01",
-            title: "Add your apply link",
-            desc: "Drop your unique link in Instagram, TikTok, website, and campaigns. Every model lands in the same branded flow.",
+            title: "Share your application link",
+            desc: "Place your unique link on Instagram, TikTok, your website, or in campaigns. All models come into the same organized system.",
         },
         {
             number: "02",
-            title: "AI automatically categorizes",
-            desc: "Models upload photos and details. AI analyzes everything and sorts each profile into Perfect Fit, Good Fit, or Low Potential.",
+            title: "AI sorts automatically",
+            desc: "Models upload photos and details. AI analyzes everything and sorts each application into: Perfect Fit, Good Fit, or Low Potential.",
         },
         {
             number: "03",
-            title: "Your team reviews & contacts",
-            desc: "Save to favorites, reject, or contact models — all from one clear dashboard. No more switching between apps.",
+            title: "You choose and contact",
+            desc: "Review, save favorites, or chat directly with models. Everything on one clear dashboard. No more switching between apps.",
         },
     ];
 
@@ -34,12 +34,12 @@ export default function HowItWorks({ setPanel }: { setPanel: (v: PanelKey | null
                     <p className="text-xs uppercase tracking-wider text-slate-400 mb-2">
                         How it works
                     </p>
-                    <h2 className="text-3xl sm:text-4xl font-bold">
-                        From link click to clear decisions
+                    <h2 className="text-3xl sm:text-4xl font-bold text-white">
+                        From application to decision
                     </h2>
                 </div>
                 <SecondaryCTAButton small onClick={() => setPanel("how")}>
-                    Detailed view
+                    View details
                 </SecondaryCTAButton>
             </div>
 

@@ -4,14 +4,14 @@ import React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HeroHeader } from "@/components/home/HeroHeader";
-import { ChevronRight, Zap, Code2, Cpu } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import HeroDashboard from "./HeroDashboard";
 
 export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void }) {
     return (
         <div className="relative bg-[#000000] min-h-screen overflow-hidden selection:bg-cyan-500/30">
             {/* Technical Grid Background */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none" />
 
             {/* Ambient Cyan Glow (Top Center) */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[400px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
@@ -24,14 +24,14 @@ export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void 
 
                     {/* Main Headline */}
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight text-white mb-8 leading-[1.05] max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-6 duration-700">
-                        Scout Models <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">At Light Speed.</span>
+                        Find Perfect Models <br />
+                        <span className="text-cyan-400">In Seconds</span>
                     </h1>
 
-                    {/* Subheadline with Technical Font */}
-                    <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-                        The <span className="text-white font-semibold text-sm bg-white/10 px-2 py-0.5 rounded border border-white/10">AI-First</span> CRM for modern agencies.
-                        Sort thousands of applications in milliseconds with <span className="text-cyan-400">99.9% accuracy</span>.
+                    {/* Subheadline */}
+                    <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-300 mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+                        AI automatically sorts thousands of applications for you. 
+                        Find the best models instantly without hours of scrolling.
                     </p>
 
                     {/* CTAs */}
@@ -42,7 +42,7 @@ export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void 
                             className="h-12 px-8 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-base shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] transition-all"
                         >
                             <Link href="/signup">
-                                Start Scouting Free
+                                Start Free
                                 <ChevronRight className="ml-1 w-4 h-4" />
                             </Link>
                         </Button>
@@ -54,7 +54,7 @@ export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void 
                             onClick={() => setPanel?.("how")}
                         >
                             <button className="flex items-center gap-2">
-                                <span className="font-semibold text-sm">View Interactive Demo</span>
+                                <span className="font-semibold text-sm">View Demo</span>
                             </button>
                         </Button>
                     </div>
@@ -62,34 +62,34 @@ export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void 
                     {/* Dashboard Preview Frame */}
                     <div className="mt-20 relative max-w-6xl mx-auto animate-in fade-in zoom-in-95 duration-1000 delay-300">
                         {/* Glow behind dashboard */}
-                        <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 to-blue-600/20 rounded-[2rem] blur-2xl opacity-50" />
+                        <div className="absolute -inset-1 bg-cyan-500/20 rounded-4xl blur-2xl opacity-50" />
 
                         <div className="relative rounded-2xl border border-white/10 bg-[#0B0F19]/80 backdrop-blur-xl overflow-hidden shadow-2xl">
-                            {/* Mac-style Window Controls (Technical) */}
+                            {/* Window Controls */}
                             <div className="h-10 bg-[#1A1D21] border-b border-white/5 flex items-center px-4 justify-between">
                                 <div className="flex gap-2">
                                     <div className="w-3 h-3 rounded-full bg-slate-700" />
                                     <div className="w-3 h-3 rounded-full bg-slate-700" />
                                     <div className="w-3 h-3 rounded-full bg-slate-700" />
                                 </div>
-                                <div className="font-mono text-[10px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Cpu size={10} /> Live_Instance_v4.2
+                                <div className="text-[10px] text-slate-500 uppercase tracking-widest">
+                                    AI Scout Dashboard
                                 </div>
                             </div>
 
                             {/* The Actual Dashboard Component */}
-                            <div className="relative aspect-[16/9] md:aspect-[21/9] overflow-hidden">
+                            <div className="relative aspect-video md:aspect-21/9 overflow-hidden">
                                 <div className="absolute inset-0 scale-[0.9] origin-top">
                                     <HeroDashboard />
                                 </div>
-                                <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-transparent to-transparent opacity-60 pointer-events-none" />
+                                <div className="absolute inset-0 bg-black/60 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }} />
                             </div>
                         </div>
                     </div>
 
-                    {/* Tech Stack Strip */}
+                    {/* Trusted by Agencies */}
                     <div className="mt-24 pt-10 border-t border-white/5">
-                        <p className="text-xs font-mono text-slate-500 uppercase tracking-widest mb-8">Trusted by Top Agencies</p>
+                        <p className="text-xs text-slate-400 uppercase tracking-widest mb-8">Trusted by Model Agencies</p>
                         <div className="flex flex-wrap justify-center gap-12 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                             {/* Agency Logos (Text for now) */}
                             <span className="text-xl font-bold text-white tracking-widest font-serif">ELITE</span>

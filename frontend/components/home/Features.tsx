@@ -12,35 +12,35 @@ import {
 
 const features = [
     {
-        title: "Real-time Filtering",
-        description: "Filter 10k+ applicants in milliseconds using metadata and AI tags.",
+        title: "Fast Search",
+        description: "Search through thousands of applications in seconds. Filter by country, age, height, and more.",
         icon: <Zap className="w-6 h-6 text-amber-400" />,
         colSpan: "lg:col-span-2",
-        bg: "bg-gradient-to-br from-amber-500/10 to-transparent",
+        bg: "bg-amber-500/10",
         border: "border-amber-500/20"
     },
     {
-        title: "Global CDN",
-        description: "Profiles served from edge locations worldwide for instant loading.",
+        title: "Access Anywhere",
+        description: "Works on your computer, tablet, and phone. Access your applications anytime, anywhere.",
         icon: <Globe2 className="w-6 h-6 text-blue-400" />,
         colSpan: "lg:col-span-1",
-        bg: "bg-gradient-to-br from-blue-500/10 to-transparent",
+        bg: "bg-blue-500/10",
         border: "border-blue-500/20"
     },
     {
-        title: "Team Workflows",
-        description: "Collaborate on shortlists with role-based access control.",
+        title: "Team Collaboration",
+        description: "Share favorites with your team. Everyone sees the same overview.",
         icon: <Users className="w-6 h-6 text-purple-400" />,
         colSpan: "lg:col-span-1",
-        bg: "bg-gradient-to-br from-purple-500/10 to-transparent",
+        bg: "bg-purple-500/10",
         border: "border-purple-500/20"
     },
     {
-        title: "Analytics Engine",
-        description: "Track scout performance, application rates, and conversion metrics.",
+        title: "Insights & Analytics",
+        description: "See how many applications you receive, which countries apply most, and track your workflow.",
         icon: <BarChart3 className="w-6 h-6 text-emerald-400" />,
         colSpan: "lg:col-span-2",
-        bg: "bg-gradient-to-br from-emerald-500/10 to-transparent",
+        bg: "bg-emerald-500/10",
         border: "border-emerald-500/20"
     },
 ];
@@ -49,16 +49,16 @@ export default function Features() {
     return (
         <section id="features" className="py-32 bg-[#050505] relative overflow-hidden">
             {/* Background Grid */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-size-[32px_32px] pointer-events-none" />
 
             <div className="container mx-auto px-6 lg:px-12 relative z-10">
                 <div className="max-w-3xl mb-20">
                     <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight mb-6">
-                        Built for <span className="text-slate-500">Scale</span>
+                        Built for <span className="text-slate-500">Model Agencies</span>
                     </h2>
-                    <p className="text-lg text-slate-400 leading-relaxed">
-                        Traditional agency software wasn't built for the AI era.
-                        We re-architected the scouting stack to handle high-velocity recruiting.
+                    <p className="text-lg text-slate-300 leading-relaxed">
+                        Simple, fast, and clear. Whether you get 10 or 10,000 applications, 
+                        AI helps you find the best models without the hassle.
                     </p>
                 </div>
 
@@ -72,17 +72,17 @@ export default function Features() {
                             <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-6 text-cyan-400">
                                 <Workflow />
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-3">Automated Pipelines</h3>
-                            <p className="text-slate-400 max-w-sm">
-                                Define custom stages for your recruitment funnel.
-                                Let AI automatically move candidates based on match scores.
+                            <h3 className="text-2xl font-bold text-white mb-3">Automatic Sorting</h3>
+                            <p className="text-slate-300 max-w-sm">
+                                AI automatically sorts every application into: Perfect Fit, Good Fit, or Low Potential. 
+                                You just need to choose.
                             </p>
                         </div>
                     </div>
 
                     {/* Tall Feature Block */}
                     <div className="row-span-2 rounded-3xl bg-[#0A0A0A] border border-white/5 p-8 relative overflow-hidden group hover:border-white/10 transition-colors flex flex-col justify-end">
-                        <div className="absolute inset-0 opacity-20 bg-gradient-to-t from-purple-500/20 to-transparent" />
+                        <div className="absolute inset-0 opacity-20 bg-purple-500/20" style={{ background: 'linear-gradient(to top, rgba(168,85,247,0.2) 0%, transparent 100%)' }} />
                         <div className="relative z-10 bg-[#111] rounded-xl border border-white/5 p-4 mb-8 transform group-hover:-translate-y-2 transition-transform duration-500">
                             {/* Mock Code / Config */}
                             <div className="flex gap-2 mb-3">
@@ -97,9 +97,10 @@ export default function Features() {
                             </div>
                         </div>
                         <div className="relative z-10">
-                            <h3 className="text-xl font-bold text-white mb-2">API First</h3>
-                            <p className="text-sm text-slate-400">
-                                Connect your existing forms and databases directly via our REST API.
+                            <h3 className="text-xl font-bold text-white mb-2">Simple Dashboard</h3>
+                            <p className="text-sm text-slate-300">
+                                Everything in one place. View applications, chat with models, and manage favorites 
+                                without switching between apps.
                             </p>
                         </div>
                     </div>

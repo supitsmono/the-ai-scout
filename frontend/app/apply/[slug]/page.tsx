@@ -2,6 +2,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { Logo } from "@/components/logo";
 import ApplyForm from "@/components/apply/ApplyForm";
 import Footer from "@/components/home/Footer"; // Reusing footer for consistency
 
@@ -17,12 +19,31 @@ export default function ApplyPage({ params }: { params: { slug: string } }) {
   const agencyName = params.slug === "demo" ? "Demo Agency" : params.slug;
 
   return (
-    <main className="relative min-h-screen w-full bg-[#050816] text-white overflow-x-hidden flex flex-col justify-center">
-      {/* Ambient background */}
-      <div className="pointer-events-none absolute inset-0 -z-10 
-        bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),transparent_55%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.14),transparent_55%)]" />
+    <main className="relative min-h-screen w-full bg-[#000000] text-white overflow-x-hidden flex flex-col selection:bg-cyan-500/30">
+      {/* Technical Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none" />
 
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 md:px-8 py-4 sm:py-6 flex flex-col gap-6 sm:gap-8">
+      {/* Ambient background */}
+      <div className="pointer-events-none absolute inset-0 -z-10" style={{
+        background: 'radial-gradient(circle at top, rgba(56,189,248,0.15), transparent 60%), radial-gradient(circle at bottom, rgba(16,185,129,0.12), transparent 50%)'
+      }} />
+
+      {/* Header */}
+      <header className="relative z-10 pt-8 pb-4">
+        <div className="container mx-auto px-6 flex items-center justify-between">
+          <Link href="/" className="group">
+            <Logo size="default" className="group" />
+          </Link>
+          <Link
+            href="/"
+            className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
+          >
+            Back to Home
+          </Link>
+        </div>
+      </header>
+
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 md:px-8 py-4 sm:py-6 flex flex-col gap-6 sm:gap-8 relative z-10">
 
         <motion.div
           initial={fadeUp.initial}

@@ -4,27 +4,27 @@ export default function StatusBadge({ status }) {
   const map = {
     perfectFit: {
       label: "Perfect Fit",
-      color: "bg-blue-600 text-white",
+      color: "bg-emerald-500 text-white",
     },
     goodFit: {
       label: "Good Fit",
-      color: "bg-green-500 text-white",
+      color: "bg-cyan-500 text-white",
     },
     lowPotential: {
       label: "Low Potential",
-      color: "bg-orange-500 text-white",
+      color: "bg-slate-500 text-white",
     },
     favorite: {
       label: "Favorite",
-      color: "bg-purple-600 text-white",
+      color: "bg-cyan-500 text-white",
     },
     rejected: {
       label: "Rejected",
-      color: "bg-red-600 text-white",
+      color: "bg-slate-600 text-white",
     },
     contacted: {
       label: "Contacted",
-      color: "bg-yellow-500 text-black",
+      color: "bg-emerald-400 text-white",
     },
   };
 

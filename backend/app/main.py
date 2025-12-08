@@ -8,6 +8,11 @@ from app.database import Base, engine
 # Import all models to ensure tables are created
 from app.models import model, chat, message
 
+# Optional: Import auth routes and user model (only if fraud prevention is set up)
+# Disable auth completely for now to prevent blocking
+AUTH_AVAILABLE = False
+auth = None
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -46,6 +51,14 @@ app.include_router(ai.router, tags=["AI Classification"])
 # Pipeline
 from app.routes import pipeline
 app.include_router(pipeline.router, tags=["Pipeline"])
+
+# Analytics
+from app.routes import analytics
+app.include_router(analytics.router, tags=["Analytics"])
+
+# Authentication (optional - only if fraud prevention is set up)
+if AUTH_AVAILABLE and auth:
+    app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 
 # ============================
 # ROOT ENDPOINT

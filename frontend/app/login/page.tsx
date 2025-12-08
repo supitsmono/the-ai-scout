@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { Logo } from "@/components/logo";
+import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -15,45 +21,185 @@ export default function LoginPage() {
     setTimeout(() => {
       setLoading(false);
       router.push("/dashboard");
-    }, 600);
+    }, 1000);
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900/80 p-6 shadow-soft">
-        <h1 className="text-lg font-semibold">Log in to your agency</h1>
-        <p className="mt-1 text-xs text-slate-400">
-          Use your agency credentials to access the dashboard.
-        </p>
+    <div className="relative min-h-screen bg-[#000000] text-white overflow-hidden selection:bg-cyan-500/30">
+      {/* Technical Grid Background */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none" />
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-3 text-xs">
-          <div className="space-y-1">
-            <label className="text-slate-300">Email</label>
-            <input
-              type="email"
-              required
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs outline-none ring-0 focus:border-brand-400"
-            />
-          </div>
+      {/* Ambient Cyan Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[800px] h-[500px] bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
 
-          <div className="space-y-1">
-            <label className="text-slate-300">Password</label>
-            <input
-              type="password"
-              required
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-xs outline-none ring-0 focus:border-brand-400"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-3 flex w-full items-center justify-center rounded-full bg-white px-4 py-2 text-xs font-medium text-slate-950 disabled:opacity-60"
+      {/* Header */}
+      <header className="relative z-10 pt-8 pb-4">
+        <div className="container mx-auto px-6 flex items-center justify-between">
+          <Link href="/" className="group">
+            <Logo size="default" className="group" />
+          </Link>
+          <Link
+            href="/"
+            className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
           >
-            {loading ? "Entering..." : "Enter dashboard"}
-          </button>
-        </form>
-      </div>
+            Back to Home
+          </Link>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative z-10 flex items-center justify-center min-h-[calc(100vh-120px)] px-6 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-md"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="relative"
+          >
+            {/* Card Glow Effect */}
+            <div className="absolute -inset-0.5 bg-cyan-500/20 rounded-2xl blur-xl opacity-50" />
+
+            {/* Login Card */}
+            <div className="relative bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl">
+              {/* Header */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-center mb-8"
+              >
+                <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
+                <p className="text-slate-400 text-sm">
+                  Sign in to access your agency dashboard
+                </p>
+              </motion.div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Email Field */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="space-y-2"
+                >
+                  <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-cyan-400" />
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all"
+                  />
+                </motion.div>
+
+                {/* Password Field */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                  className="space-y-2"
+                >
+                  <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-cyan-400" />
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 focus:bg-white/10 transition-all"
+                  />
+                </motion.div>
+
+                {/* Forgot Password */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.5 }}
+                  className="flex items-center justify-end"
+                >
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </motion.div>
+
+                {/* Submit Button */}
+                <motion.button
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.6 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-sm shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      Sign In
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </motion.button>
+              </form>
+
+              {/* Divider */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+                className="relative my-6"
+              >
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-[#0A0A0A] px-2 text-slate-500">Or</span>
+                </div>
+              </motion.div>
+
+              {/* Sign Up Link */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.8 }}
+                className="text-center"
+              >
+                <p className="text-sm text-slate-400">
+                  Don't have an account?{" "}
+                  <Link
+                    href="/signup"
+                    className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+                  >
+                    Start Free Trial
+                  </Link>
+                </p>
+              </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </main>
     </div>
   );
 }

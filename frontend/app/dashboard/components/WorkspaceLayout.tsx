@@ -20,12 +20,12 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const showLeftPanel = viewMode === "chats" || viewMode === "applications" || viewMode === "favorites";
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div className="flex flex-col h-full w-full min-w-0">
       {/* Top Navigation Bar */}
       <TopBar />
 
       {/* Main Workspace Content */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 min-w-0 overflow-hidden relative">
         {/* Mobile overlay */}
         {showLeftPanel && leftPanelOpen && (
           <div
@@ -38,14 +38,14 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         {showLeftPanel && (
           <div
             className={`${leftPanelOpen ? "translate-x-0" : "-translate-x-full"
-              } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-80 border-r border-slate-800/50 bg-[#0B0F19]/60 backdrop-blur-xl transition-transform duration-300`}
+              } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-80 border-r border-slate-800/50 bg-[#0B0F19]/60 backdrop-blur-xl transition-transform duration-300 shrink-0`}
           >
             <LeftPanel onClose={() => setLeftPanelOpen(false)} />
           </div>
         )}
 
         {/* Center Panel - Model Detail / Chat Window / Pipeline */}
-        <div className="flex-1 overflow-hidden relative flex flex-col">
+        <div className="flex-1 min-w-0 overflow-hidden relative flex flex-col">
           {/* Mobile menu button */}
           {showLeftPanel && (
             <button

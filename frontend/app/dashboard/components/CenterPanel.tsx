@@ -6,6 +6,7 @@ import ModelDetailPanel from "../ModelDetailPanel";
 import ModelProfilePanel from "../../chats/[chatId]/components/ModelProfilePanel";
 import ChatInterface from "./ChatInterface";
 import DashboardHome from "./DashboardHome";
+import Analytics from "./Analytics";
 import type { DashboardModel } from "../page";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -60,6 +61,11 @@ export default function CenterPanel() {
     return <DashboardHome />;
   }
 
+  // Analytics View
+  if (viewMode === "analytics") {
+    return <Analytics />;
+  }
+
   // Applications or Favorites view - show empty state or model detail as slide-over
   if (viewMode === "applications" || viewMode === "favorites") {
     return (
@@ -87,6 +93,12 @@ export default function CenterPanel() {
                   setViewMode("chats");
                   setSelectedModel(null);
                 }
+              }}
+              onDelete={() => {
+                // Model deleted - close panel and refresh
+                setSelectedModel(null);
+                // Optionally refresh the model list
+                window.location.reload();
               }}
             />
           </div>

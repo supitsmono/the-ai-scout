@@ -39,7 +39,7 @@ export default function DetailedDashboardPreview() {
                     <CardHeader className="border-b border-slate-800/50 pb-4">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-lg bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center">
+                                <div className="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center">
                                     <Users className="h-4 w-4 text-white" />
                                 </div>
                                 <div>

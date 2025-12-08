@@ -14,7 +14,7 @@ export default function Footer() {
         >
             <div className="flex items-center gap-3 flex-wrap">
                 <span>© {new Date().getFullYear()} The AI Scout.</span>
-                <span className="hidden sm:inline-block h-3 w-[1px] bg-slate-700" />
+                <span className="hidden sm:inline-block h-3 w-px bg-slate-700" />
                 <span>AI-powered scouting OS for modeling agencies.</span>
             </div>
 

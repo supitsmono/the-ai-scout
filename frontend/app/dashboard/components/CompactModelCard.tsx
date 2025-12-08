@@ -28,7 +28,7 @@ export default function CompactModelCard({ model, onClick }: { model: any; onCli
           alt={model.name}
         />
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
 
         {/* BADGE */}
         <div className="absolute top-2 left-2">

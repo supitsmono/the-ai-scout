@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import StatusBadge from "@/components/ui/StatusBadge";
 import type { DashboardModel } from "./page";
 import { 
@@ -11,10 +12,11 @@ import {
   Info, 
   ChevronLeft, 
   ChevronRight,
-  Sparkles,
   User,
   MapPin,
-  Calendar
+  Calendar,
+  Trash2,
+  ArrowLeft
 } from "lucide-react";
 
 type PhotoObj = {
@@ -27,6 +29,7 @@ type Props = {
   onClose: () => void;
   onContact?: (modelId: number, chatId?: number) => void;
   onFavoriteToggle?: () => void;
+  onDelete?: () => void;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -36,12 +39,13 @@ export default function ModelDetailPanel({
   onClose,
   onContact,
   onFavoriteToggle,
+  onDelete,
 }: Props) {
   if (!model) return null;
 
-  // Normalize photos - limit to reasonable number
+  // Normalize photos - Add more photos if needed for testing
   let photos: PhotoObj[] =
-    model.photos?.slice(0, 12).map((p: any) =>
+    model.photos?.map((p: any) =>
       typeof p === "string" ? { url: p, type: "" } : p
     ) ?? [];
 
@@ -49,18 +53,33 @@ export default function ModelDetailPanel({
     photos = [
       { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Portrait" },
     ];
+  } else if (photos.length < 8) {
+    // Add more photos for testing if portfolio is small
+    const additionalPhotos = [
+      { url: "https://images.pexels.com/photos/1542085/pexels-photo-1542085.jpeg", type: "Studio Portrait" },
+      { url: "https://images.pexels.com/photos/2709563/pexels-photo-2709563.jpeg", type: "Editorial" },
+      { url: "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg", type: "Commercial" },
+      { url: "https://images.pexels.com/photos/2836486/pexels-photo-2836486.jpeg", type: "Fashion" },
+      { url: "https://images.pexels.com/photos/3228949/pexels-photo-3228949.jpeg", type: "Close-up" },
+      { url: "https://images.pexels.com/photos/3792581/pexels-photo-3792581.jpeg", type: "Full Body Studio" },
+      { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Natural Light" },
+      { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Outdoor" },
+    ];
+    const existingUrls = new Set(photos.map(p => p.url));
+    photos = [...photos, ...additionalPhotos.filter(p => !existingUrls.has(p.url))];
   }
 
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [isContacting, setIsContacting] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [isFavorite, setIsFavorite] = useState(model.status === "favorite");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setIsFavorite(model.status === "favorite");
   }, [model.status]);
 
-  // Close lightbox on Escape
+  // Close lightbox on Escape and lock body scroll when lightbox is open
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -72,7 +91,18 @@ export default function ModelDetailPanel({
       }
     };
     window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+    
+    // Lock body scroll when lightbox is open
+    if (selectedPhotoIndex !== null) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = '';
+    };
   }, [selectedPhotoIndex, onClose]);
 
   const handleContactClick = async () => {
@@ -116,6 +146,37 @@ export default function ModelDetailPanel({
       console.error("Error toggling favorite:", err);
     } finally {
       setIsTogglingFavorite(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!model || isDeleting) return;
+    
+    const confirmed = window.confirm(
+      `⚠️ WARNING: This will permanently delete "${model.name}" from the system.\n\nThis will also delete:\n- All associated chats\n- All messages\n\nThis action cannot be undone. Are you sure?`
+    );
+    
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`${API_BASE}/models/${model.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        if (onDelete) {
+          onDelete();
+        }
+        onClose();
+      } else {
+        const errorText = await res.text();
+        throw new Error(errorText || "Failed to delete model");
+      }
+    } catch (err) {
+      console.error("Error deleting model:", err);
+      alert("Failed to delete model. Please try again.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -169,105 +230,73 @@ export default function ModelDetailPanel({
         </div>
       </div>
 
-      {/* CONTENT */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-6 space-y-6">
+      {/* CONTENT - No scroll, compact layout */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full max-w-6xl mx-auto p-4 space-y-4 flex flex-col">
           
           {/* PHOTO GALLERY - Compact Grid */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <User size={14} />
+          <div className="shrink-0">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+              <User size={12} />
               Portfolio ({photos.length} photos)
             </h3>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {photos.map((photo, i) => (
+            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+              {photos.slice(0, 16).map((photo, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedPhotoIndex(i)}
-                  className="aspect-[3/4] rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all group relative bg-[#111]"
+                  className="aspect-3/4 rounded-md overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all group relative bg-[#111]"
                 >
                   <img 
                     src={photo.url} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
                     alt={`${model.name} - ${photo.type || `Photo ${i + 1}`}`}
                   />
-                  {photo.type && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-0 left-0 right-0 p-2">
-                        <p className="text-[10px] text-white font-medium truncate">{photo.type}</p>
-                      </div>
-                    </div>
-                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* INFO SECTIONS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* INFO SECTIONS - Compact */}
+          <div className="grid grid-cols-2 gap-3 shrink-0">
             {/* Measurements */}
-            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Ruler size={14} />
+            <div className="bg-[#111] rounded-lg p-3 border border-white/10">
+              <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Ruler size={12} />
                 Measurements
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <div className="text-gray-500 text-xs mb-1.5">Bust</div>
-                  <div className="text-white font-semibold text-lg">{model.measurements?.bust || "—"} cm</div>
+                  <div className="text-gray-500 text-[10px] mb-0.5">Bust</div>
+                  <div className="text-white font-semibold text-sm">{model.measurements?.bust || "—"} cm</div>
                 </div>
                 <div>
-                  <div className="text-gray-500 text-xs mb-1.5">Waist</div>
-                  <div className="text-white font-semibold text-lg">{model.measurements?.waist || "—"} cm</div>
+                  <div className="text-gray-500 text-[10px] mb-0.5">Waist</div>
+                  <div className="text-white font-semibold text-sm">{model.measurements?.waist || "—"} cm</div>
                 </div>
                 <div>
-                  <div className="text-gray-500 text-xs mb-1.5">Hips</div>
-                  <div className="text-white font-semibold text-lg">{model.measurements?.hips || "—"} cm</div>
+                  <div className="text-gray-500 text-[10px] mb-0.5">Hips</div>
+                  <div className="text-white font-semibold text-sm">{model.measurements?.hips || "—"} cm</div>
                 </div>
                 <div>
-                  <div className="text-gray-500 text-xs mb-1.5">Shoe Size</div>
-                  <div className="text-white font-semibold text-lg">39 EU</div>
+                  <div className="text-gray-500 text-[10px] mb-0.5">Shoe</div>
+                  <div className="text-white font-semibold text-sm">39 EU</div>
                 </div>
               </div>
             </div>
 
             {/* Bio & Motivation */}
-            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Info size={14} />
+            <div className="bg-[#111] rounded-lg p-3 border border-white/10">
+              <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Info size={12} />
                 Bio & Motivation
               </h3>
-              <p className="text-sm text-gray-300 leading-relaxed">
+              <p className="text-xs text-gray-300 leading-relaxed line-clamp-4">
                 {model.motivation || "No motivation provided yet."}
               </p>
             </div>
           </div>
 
-          {/* AI Classification */}
-          {model.aiCategory && (
-            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Sparkles size={14} />
-                AI Classification
-              </h3>
-              <div className="mb-4">
-                <StatusBadge status={model.aiCategory} />
-              </div>
-              {model.aiReasons && model.aiReasons.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-3">Analysis Summary:</p>
-                  <ul className="space-y-2">
-                    {model.aiReasons.map((reason, i) => (
-                      <li key={i} className="text-sm text-gray-300 flex items-start">
-                        <span className="mr-2 text-purple-400 mt-0.5">•</span>
-                        <span>{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -306,54 +335,101 @@ export default function ModelDetailPanel({
             Already Contacted
           </button>
         )}
+
+        <button
+          onClick={handleDelete}
+          disabled={isDeleting}
+          className="px-5 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 shrink-0 bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isDeleting ? (
+            <span className="animate-pulse">Deleting...</span>
+          ) : (
+            <>
+              <Trash2 size={16} />
+              Reject
+            </>
+          )}
+        </button>
       </div>
 
-      {/* SIMPLE LIGHTBOX - Only shows when photo is selected */}
-      {selectedPhotoIndex !== null && (
+      {/* FULLSCREEN LIGHTBOX - Rendered via Portal to ensure it's above everything */}
+      {selectedPhotoIndex !== null && typeof window !== 'undefined' && createPortal(
         <div 
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black flex items-center justify-center"
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            zIndex: 999999,
+            width: '100vw',
+            height: '100vh'
+          }}
           onClick={() => setSelectedPhotoIndex(null)}
         >
-          <button
-            onClick={() => setSelectedPhotoIndex(null)}
-            className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
-            aria-label="Close"
-          >
-            <X size={24} className="text-white" />
-          </button>
+          {/* Top Bar with Back to Profile and Close */}
+          <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between p-4 bg-linear-to-b from-black/90 to-transparent">
+            <button
+              onClick={(e) => { e.stopPropagation(); setSelectedPhotoIndex(null); }}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
+              aria-label="Back to Profile"
+            >
+              <ArrowLeft size={20} className="text-white" />
+              <span className="text-white text-sm font-medium">Back to Profile</span>
+            </button>
+            
+            <button
+              onClick={() => setSelectedPhotoIndex(null)}
+              className="p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors backdrop-blur-sm"
+              aria-label="Close"
+            >
+              <X size={24} className="text-white" />
+            </button>
+          </div>
           
+          {/* Navigation Arrows */}
           <button
             onClick={(e) => { e.stopPropagation(); navigatePhoto("prev"); }}
-            className="absolute left-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10 backdrop-blur-sm"
             aria-label="Previous"
           >
-            <ChevronLeft size={24} className="text-white" />
+            <ChevronLeft size={32} className="text-white" />
           </button>
           
           <button
             onClick={(e) => { e.stopPropagation(); navigatePhoto("next"); }}
-            className="absolute right-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-4 bg-white/10 hover:bg-white/20 rounded-full transition-colors z-10 backdrop-blur-sm"
             aria-label="Next"
           >
-            <ChevronRight size={24} className="text-white" />
+            <ChevronRight size={32} className="text-white" />
           </button>
 
+          {/* Main Image - Full viewport with safe padding */}
           <div 
-            className="max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+            className="w-full h-full flex items-center justify-center"
+            style={{ padding: '80px 100px' }}
             onClick={(e) => e.stopPropagation()}
           >
             <img
               src={photos[selectedPhotoIndex].url}
               alt={`${model.name} - ${photos[selectedPhotoIndex].type || `Photo ${selectedPhotoIndex + 1}`}`}
-              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              className="max-w-full max-h-full object-contain"
+              style={{ maxWidth: 'calc(100vw - 200px)', maxHeight: 'calc(100vh - 160px)' }}
             />
           </div>
 
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg text-sm text-white">
-            {selectedPhotoIndex + 1} / {photos.length}
-            {photos[selectedPhotoIndex].type && ` • ${photos[selectedPhotoIndex].type}`}
+          {/* Bottom Info Bar */}
+          <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-center p-4 bg-linear-to-t from-black/90 to-transparent">
+            <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-lg text-sm text-white">
+              <span className="font-medium">{selectedPhotoIndex + 1} / {photos.length}</span>
+              {photos[selectedPhotoIndex].type && (
+                <span className="ml-3 text-gray-300">• {photos[selectedPhotoIndex].type}</span>
+              )}
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

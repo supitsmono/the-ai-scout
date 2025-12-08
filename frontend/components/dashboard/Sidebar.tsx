@@ -13,7 +13,7 @@ export default function Sidebar() {
     <aside className="flex h-full flex-col px-4 py-6">
       {/* Brand Header */}
       <div className="mb-10 px-2 flex items-center gap-3">
-        <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 shadow-lg shadow-purple-500/20">
+        <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-linear-to-br from-purple-600 to-blue-600 shadow-lg shadow-purple-500/20">
           <span className="text-xs font-bold text-white">AI</span>
         </div>
         <div>
@@ -46,7 +46,7 @@ export default function Sidebar() {
       {/* Footer / User Info */}
       <div className="mt-auto pt-6 border-t border-slate-800/50">
         <div className="bg-slate-900/50 rounded-xl p-3 border border-slate-800/50 flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-500 flex items-center justify-center text-[10px] font-bold">
+          <div className="h-8 w-8 rounded-full bg-linear-to-tr from-cyan-500 to-blue-500 flex items-center justify-center text-[10px] font-bold">
             AG
           </div>
           <div className="overflow-hidden">
@@ -72,13 +72,13 @@ function NavItem({ href, icon, label, active }: { href: string, icon: React.Reac
         }`}
     >
       {active && (
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 to-blue-500 rounded-r-full" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-linear-to-b from-purple-500 to-blue-500 rounded-r-full" />
       )}
       <span className={`relative z-10 transition-colors ${active ? "text-purple-400" : "group-hover:text-purple-300"}`}>{icon}</span>
       <span className="text-xs font-medium relative z-10">{label}</span>
 
       {active && (
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-transparent opacity-50" />
+        <div className="absolute inset-0 bg-linear-to-r from-purple-500/10 to-transparent opacity-50" />
       )}
     </Link>
   )

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 import type { DashboardModel } from "../page";
-import { CheckSquare, Square, Trash2, Heart, Download, MoreHorizontal, Filter, Layers, Sparkles } from "lucide-react";
+import { CheckSquare, Square, Trash2, Heart, Download, MoreHorizontal, Filter, Layers, Sparkles, MessageSquare, Users, Star, TrendingUp, AlertCircle } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -49,25 +49,43 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
   // Load chats (unchanged logic for now, but kept clean)
   useEffect(() => {
     if (viewMode === "chats") {
+      let timeoutId: NodeJS.Timeout;
+      
       const loadChats = async () => {
         setLoading(true);
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         try {
-          const res = await fetch(`${API_BASE}/chats`);
+          const res = await fetch(`${API_BASE}/chats`, {
+            signal: controller.signal
+          });
           if (res.ok) {
             const data = await res.json();
-            setChats(data);
+            setChats(Array.isArray(data) ? data : []);
+          } else {
+            console.warn("Failed to load chats:", res.status);
+            setChats([]);
           }
-        } catch (err) {
-          console.error("Error loading chats:", err);
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            console.error("Error loading chats:", err);
+          }
+          setChats([]);
         } finally {
+          clearTimeout(timeoutId);
           setLoading(false);
         }
       };
       loadChats();
       const interval = setInterval(loadChats, 10000);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     } else {
       setChats([]);
+      setLoading(false);
     }
   }, [viewMode]);
 
@@ -84,6 +102,9 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
 
   const loadModels = useCallback(async (pageNum: number) => {
     if (!hasMore && pageNum > 1) return;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
       let aiCategory: string | undefined;
@@ -105,23 +126,33 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
         params.set("ai_category", aiCategory);
       }
 
-      const res = await fetch(`${API_BASE}/models?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/models?${params.toString()}`, {
+        signal: controller.signal
+      });
       if (res.ok) {
         const data = await res.json();
 
         // Transform
-        const transformedModels: DashboardModel[] = data.models.map((m: any) => {
-          // Robust Photo Generation logic
+        const transformedModels: DashboardModel[] = (data.models || []).map((m: any) => {
+          // Robust Photo Generation logic - Add more photos for testing
           let photos = [];
           if (m.photos && Array.isArray(m.photos) && m.photos.length > 0) {
             photos = m.photos.map((p: any) => typeof p === "string" ? { url: p, type: "Main" } : p);
           } else {
-            // High-Quality Agency Mock Photos
+            // High-Quality Agency Mock Photos - Extended portfolio for testing
             photos = [
               { url: "https://images.pexels.com/photos/1921168/pexels-photo-1921168.jpeg", type: "Portfolio Headshot" },
               { url: "https://images.pexels.com/photos/1559086/pexels-photo-1559086.jpeg", type: "Full Body" },
               { url: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg", type: "Polaroid (Natural)" },
               { url: "https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg", type: "Side Profile" },
+              { url: "https://images.pexels.com/photos/1542085/pexels-photo-1542085.jpeg", type: "Studio Portrait" },
+              { url: "https://images.pexels.com/photos/2709563/pexels-photo-2709563.jpeg", type: "Editorial" },
+              { url: "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg", type: "Commercial" },
+              { url: "https://images.pexels.com/photos/2836486/pexels-photo-2836486.jpeg", type: "Fashion" },
+              { url: "https://images.pexels.com/photos/3228949/pexels-photo-3228949.jpeg", type: "Close-up" },
+              { url: "https://images.pexels.com/photos/3792581/pexels-photo-3792581.jpeg", type: "Full Body Studio" },
+              { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Natural Light" },
+              { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Outdoor" },
             ];
           }
 
@@ -145,10 +176,21 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
         }
 
         setModels(prev => pageNum === 1 ? transformedModels : [...prev, ...transformedModels]);
+      } else {
+        console.warn("Failed to load models:", res.status);
+        if (pageNum === 1) {
+          setModels([]);
+        }
       }
-    } catch (err) {
-      console.error("Error loading models:", err);
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error("Error loading models:", err);
+      }
+      if (pageNum === 1) {
+        setModels([]);
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [viewMode, selectedTab, searchQuery, hasMore]);
@@ -180,53 +222,93 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
   // Render Chats
   if (viewMode === "chats") {
     return (
-      <div className="flex flex-col h-full bg-[#111] border-r border-[#1A1D21]">
-        <div className="px-4 py-3 flex items-center justify-between group cursor-pointer hover:bg-white/5 transition-colors">
-          <h2 className="text-sm font-bold text-slate-300 group-hover:text-white flex items-center gap-1">
-            Direct Messages <span className="text-slate-500 font-normal">▼</span>
+      <div className="flex flex-col h-full bg-linear-to-b from-[#0A0D14] to-[#050608] border-r border-white/5">
+        <div className="px-4 py-4 flex items-center justify-between border-b border-white/5">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <MessageSquare size={16} />
+            Direct Messages
           </h2>
-          {/* Mock Plus Button */}
-          <button className="text-slate-500 hover:text-white"><Layers size={14} /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-[1px] scrollbar-none">
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {loading ? (
             // Skeleton
-            [1, 2, 3].map(i => <div key={i} className="h-7 w-full bg-white/5 rounded animate-pulse mb-1" />)
+            [1, 2, 3, 4].map(i => (
+              <div key={i} className="h-16 w-full bg-white/5 rounded-lg animate-pulse mb-1" />
+            ))
           ) : filteredChats.length === 0 ? (
-            <div className="text-center py-4 opacity-50"><p className="text-xs">No active chats</p></div>
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <MessageSquare size={32} className="text-gray-600 mb-3" />
+              <p className="text-sm text-gray-500">No active chats</p>
+              <p className="text-xs text-gray-600 mt-1">Start a conversation from Applications</p>
+            </div>
           ) : (
             filteredChats.map((chat: any) => {
               const isActive = activeChatId === chat.id;
-              const hasUnread = Math.random() > 0.8; // Mock unread
+              const unreadCount = chat.unread_count || 0;
+              const hasUnread = unreadCount > 0;
+              
+              // Get avatar photo
+              const avatarPhoto = chat.model?.photos?.[0]?.url || 
+                (typeof chat.model?.photos?.[0] === 'string' ? chat.model.photos[0] : null) ||
+                "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+              
+              // Get last message preview
+              const lastMessage = chat.last_message || "No messages yet";
+              const truncatedMessage = lastMessage.length > 40 
+                ? lastMessage.substring(0, 40) + "..." 
+                : lastMessage;
 
               return (
                 <div
                   key={chat.id}
-                  onClick={() => { setActiveChat(chat.id); onClose?.(); }}
-                  className={`group flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-all
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (activeChatId !== chat.id) {
+                      setActiveChat(chat.id);
+                      onClose?.();
+                    }
+                  }}
+                  className={`group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all border
                       ${isActive
-                      ? "bg-[#1164A3] text-white" // Slack Active Blue
-                      : "text-slate-400 hover:bg-[#1A1D21] hover:text-slate-200"
+                      ? "bg-purple-600/20 border-purple-500/50 shadow-lg shadow-purple-900/20"
+                      : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
                     }`}
                 >
-                  {/* Status / Avatar */}
-                  <div className="relative w-4 h-4 shrink-0">
+                  {/* Avatar */}
+                  <div className="relative w-12 h-12 shrink-0">
                     <img
-                      src={chat.model?.photos?.[0]?.url || chat.model?.photos?.[0] || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg"}
-                      className={`w-4 h-4 rounded-[4px] object-cover ${isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"}`}
-                      alt="avatar"
+                      src={avatarPhoto}
+                      className={`w-12 h-12 rounded-full object-cover border-2 ${
+                        isActive ? "border-purple-500/50" : "border-white/10"
+                      }`}
+                      alt={chat.model?.name || "Avatar"}
                     />
-                    <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 ${isActive ? "border-[#1164A3]" : "border-[#111]"} bg-emerald-500`} />
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${
+                      isActive ? "border-purple-600/20" : "border-[#0A0D14]"
+                    } bg-emerald-500`} />
                   </div>
 
-                  <div className="flex-1 min-w-0 flex items-center justify-between">
-                    <span className={`text-[13px] truncate ${hasUnread && !isActive ? "font-bold text-white" : "font-normal"}`}>
-                      {chat.model?.name || "Unknown"}
-                    </span>
-                    {hasUnread && !isActive && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                    )}
+                  {/* Chat Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className={`text-sm font-semibold truncate ${
+                        isActive ? "text-white" : "text-gray-200"
+                      }`}>
+                        {chat.model?.name || "Unknown"}
+                      </h3>
+                      {hasUnread && !isActive && (
+                        <div className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-purple-600 text-white text-[10px] font-bold">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </div>
+                      )}
+                    </div>
+                    <p className={`text-xs truncate ${
+                      isActive ? "text-gray-300" : "text-gray-500"
+                    }`}>
+                      {truncatedMessage}
+                    </p>
                   </div>
                 </div>
               )
@@ -266,16 +348,22 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
 
         {/* Tabs - Only show for applications view */}
         {viewMode === "applications" && (
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none flex-nowrap">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setSelectedTab(tab.key)}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border ${selectedTab === tab.key
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (selectedTab !== tab.key) {
+                    setSelectedTab(tab.key);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border shrink-0 ${selectedTab === tab.key
                   ? tab.key === "perfectFit" 
                     ? "bg-emerald-500 text-white border-emerald-400 shadow-lg shadow-emerald-900/30"
                     : tab.key === "goodFit"
-                    ? "bg-amber-500 text-white border-amber-400 shadow-lg shadow-amber-900/30"
+                    ? "bg-cyan-500 text-white border-cyan-400 shadow-lg shadow-cyan-900/30"
                     : tab.key === "lowPotential"
                     ? "bg-slate-600 text-white border-slate-500 shadow-lg shadow-slate-900/30"
                     : "bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-900/30"
@@ -312,24 +400,32 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
           <div className="text-center py-12 text-slate-600 text-xs">No models found</div>
         ) : (
           models.map((model) => {
-            const photoUrl = model.photos?.[0]?.url || "https://placehold.co/100";
+            // Use first photo as profile photo, or fallback
+            const firstPhoto = model.photos?.[0];
+            const photoUrl = firstPhoto?.url || (typeof firstPhoto === 'string' ? firstPhoto : null) || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
             const isSelected = selectedItems.has(model.id);
             const isActive = selectedModelId === model.id && !selectionMode;
 
-            // Match Score Mock
+            // Only show colors/score in specific tabs, not in "All"
+            const showColors = selectedTab !== "all";
             const matchScore = model.aiCategory === "perfectFit" ? 98 : model.aiCategory === "goodFit" ? 85 : 60;
             const scoreColor = matchScore > 90 ? "text-emerald-400" : matchScore > 75 ? "text-amber-400" : "text-slate-400";
-            const ringColor = matchScore > 90 ? "border-emerald-500/50" : matchScore > 75 ? "border-amber-500/50" : "border-slate-600/50";
+            const ringColor = showColors ? (matchScore > 90 ? "border-emerald-500/50" : matchScore > 75 ? "border-amber-500/50" : "border-slate-600/50") : "border-slate-700/30";
             const scoreBg = matchScore > 90 ? "bg-emerald-500/10 border-emerald-500/30" : matchScore > 75 ? "bg-amber-500/10 border-amber-500/30" : "bg-slate-500/10 border-slate-500/30";
 
             return (
               <div
                 key={model.id}
-                onClick={() => {
-                  if (selectionMode) toggleSelection(model.id);
-                  else {
-                    setSelectedModel(model.id);
-                    onClose?.();
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (selectionMode) {
+                    toggleSelection(model.id);
+                  } else {
+                    if (selectedModelId !== model.id) {
+                      setSelectedModel(model.id);
+                      onClose?.();
+                    }
                   }
                 }}
                 className={`group relative flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300 border
@@ -349,15 +445,17 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
                   </div>
                 )}
 
-                {/* Photo with Match Ring */}
+                {/* Photo */}
                 <div className={`relative w-14 h-14 shrink-0 rounded-lg p-[2px] border-2 ${ringColor}`}>
                   <div className="w-full h-full rounded-md overflow-hidden bg-slate-800 relative group-hover:brightness-110 transition-all">
                     <img src={photoUrl} className="w-full h-full object-cover" />
                   </div>
-                  {/* Score Badge */}
-                  <div className={`absolute -bottom-1 -right-1 ${scoreBg} text-[9px] font-bold px-1.5 py-0.5 rounded border backdrop-blur-sm ${scoreColor}`}>
-                    {matchScore}%
-                  </div>
+                  {/* Score Badge - Only show in specific tabs, not in "All" */}
+                  {showColors && (
+                    <div className={`absolute -bottom-1 -right-1 ${scoreBg} text-[9px] font-bold px-1.5 py-0.5 rounded border backdrop-blur-sm ${scoreColor}`}>
+                      {matchScore}%
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
@@ -366,7 +464,8 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
                     <h3 className={`text-sm font-bold truncate transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
                       {model.name}
                     </h3>
-                    {model.aiCategory === 'perfectFit' && !selectionMode && (
+                    {/* TOP badge - Only show in specific tabs, not in "All" */}
+                    {showColors && model.aiCategory === 'perfectFit' && !selectionMode && (
                       <div className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40 shadow-sm shadow-emerald-900/20">
                         <Sparkles size={8} /> TOP
                       </div>
@@ -375,9 +474,9 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
 
                   <div className="flex items-center gap-2 mt-1 text-[11px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
                     <span>{model.age}y</span>
-                    <span className="w-0.5 h-0.5 bg-slate-500 rounded-full" />
+                    <span className="w-px h-px bg-slate-500 rounded-full" />
                     <span>{model.height}cm</span>
-                    <span className="w-0.5 h-0.5 bg-slate-500 rounded-full" />
+                    <span className="w-px h-px bg-slate-500 rounded-full" />
                     <span className="truncate">{model.country}</span>
                   </div>
 
@@ -409,7 +508,7 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
               <Download size={16} />
             </button>
           </div>
-          <div className="h-4 w-[1px] bg-slate-700/50 mx-1" />
+          <div className="h-4 w-px bg-slate-700/50 mx-1" />
           <button className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-colors shadow-lg shadow-purple-900/30">
             Action
           </button>

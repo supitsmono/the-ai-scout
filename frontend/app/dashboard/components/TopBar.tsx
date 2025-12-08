@@ -58,7 +58,11 @@ export default function TopBar() {
       {/* Title */}
       <div className="flex items-center gap-4">
         <h1 className="text-xl font-bold text-white tracking-tight">
-          {viewMode === "applications" ? "Applications" : viewMode === "chats" ? "Inbox" : "Analytics"}
+          {viewMode === "home" ? "Dashboard" : 
+           viewMode === "applications" ? "Applications" : 
+           viewMode === "chats" ? "Inbox" : 
+           viewMode === "favorites" ? "Favorites" : 
+           viewMode === "analytics" ? "Analytics" : "Dashboard"}
         </h1>
         {viewMode === "applications" && (
           <span className="bg-slate-800 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-700">

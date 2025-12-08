@@ -51,14 +51,14 @@ export default function ApplyForm({ slug }: { slug: string }) {
                     initial={{ opacity: 0, scale: 0 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    className="absolute inset-0 z-0 bg-gradient-to-b from-purple-500/10 to-transparent rounded-full blur-3xl"
+                    className="absolute inset-0 z-0 bg-linear-to-b from-purple-500/10 to-transparent rounded-full blur-3xl"
                 />
 
                 <motion.div
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
-                    className="relative z-10 w-20 h-20 bg-gradient-to-tr from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.5)] mb-6"
+                    className="relative z-10 w-20 h-20 bg-linear-to-tr from-green-400 to-emerald-600 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.5)] mb-6"
                 >
                     <CheckCircle2 className="w-10 h-10 text-white" />
                 </motion.div>
@@ -67,7 +67,7 @@ export default function ApplyForm({ slug }: { slug: string }) {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3, duration: 0.5 }}
-                    className="relative z-10 text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-300 mb-3"
+                    className="relative z-10 text-3xl font-bold bg-clip-text text-transparent bg-linear-to-r from-white to-slate-300 mb-3"
                 >
                     Application Sent!
                 </motion.h2>
@@ -113,7 +113,7 @@ export default function ApplyForm({ slug }: { slug: string }) {
                     </div>
                     <div className="h-1 bg-slate-800/50 rounded-full overflow-hidden">
                         <motion.div
-                            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500"
+                            className="h-full bg-linear-to-r from-indigo-500 via-purple-500 to-cyan-500"
                             initial={{ width: "0%" }}
                             animate={{ width: `${(step / totalSteps) * 100}%` }}
                             transition={{ duration: 0.5, ease: "circOut" }}
@@ -179,7 +179,7 @@ export default function ApplyForm({ slug }: { slug: string }) {
                                     <PhotoDropzone label="Full Body" sub="Front" />
                                     <PhotoDropzone label="3/4 Body" sub="Hips Up" />
                                     <PhotoDropzone label="Personality" sub="Extra" />
-                                    <div className="border border-dashed border-slate-800/60 rounded-xl p-2 flex flex-col items-center justify-center text-center opacity-40 bg-slate-950/20 aspect-[4/5]">
+                                    <div className="border border-dashed border-slate-800/60 rounded-xl p-2 flex flex-col items-center justify-center text-center opacity-40 bg-slate-950/20 aspect-4/5">
                                         <Camera className="w-5 h-5 mb-1" />
                                         <span className="text-[10px] font-medium">5 Photos</span>
                                     </div>
@@ -198,7 +198,7 @@ export default function ApplyForm({ slug }: { slug: string }) {
                                         />
                                     </div>
 
-                                    <div className="bg-gradient-to-br from-slate-900/50 to-slate-950/30 rounded-xl p-5 border border-slate-800/60 space-y-3">
+                                    <div className="bg-linear-to-br from-slate-900/50 to-slate-950/30 rounded-xl p-5 border border-slate-800/60 space-y-3">
                                         <h4 className="font-semibold text-white flex items-center gap-2 text-xs uppercase tracking-wider">
                                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                                             Check details
@@ -256,7 +256,7 @@ export default function ApplyForm({ slug }: { slug: string }) {
                             type="button" // Change to 'submit' if inside form, but here buttons are outside. We need to trigger form submit.
                             onClick={handleSubmit} // Manually triggering submit since button is outside form
                             disabled={submitting}
-                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white border-0 rounded-full px-8 h-10 text-sm font-semibold shadow-[0_0_30px_rgba(124,58,237,0.3)] transition-all hover:shadow-[0_0_40px_rgba(124,58,237,0.5)] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white border-0 rounded-full px-8 h-10 text-sm font-semibold shadow-[0_0_30px_rgba(124,58,237,0.3)] transition-all hover:shadow-[0_0_40px_rgba(124,58,237,0.5)] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {submitting ? (
                                 <span className="flex items-center gap-2">Processing... <Sparkles className="w-4 h-4 animate-spin" /></span>
@@ -291,7 +291,7 @@ function StepWrapper({ title, description, children }: { title: string, descript
 
 function PhotoDropzone({ label, sub }: { label: string, sub?: string }) {
     return (
-        <div className="group relative border border-dashed border-slate-700/50 hover:border-purple-500/50 rounded-xl p-3 transition-all cursor-pointer bg-slate-950/30 hover:bg-slate-900/60 aspect-[4/5] flex flex-col items-center justify-center text-center gap-2.5">
+        <div className="group relative border border-dashed border-slate-700/50 hover:border-purple-500/50 rounded-xl p-3 transition-all cursor-pointer bg-slate-950/30 hover:bg-slate-900/60 aspect-4/5 flex flex-col items-center justify-center text-center gap-2.5">
             <div className="h-10 w-10 rounded-full bg-slate-900/80 border border-slate-800 group-hover:bg-purple-500/10 group-hover:border-purple-500/20 flex items-center justify-center transition-all duration-300 shadow-lg">
                 <Camera className="w-4 h-4 text-slate-500 group-hover:text-purple-400 transition-colors" />
             </div>

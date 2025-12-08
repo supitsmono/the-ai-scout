@@ -60,7 +60,7 @@ export default function ModelGrid({
             onClick={() => onSelect(m)}
             className="group rounded-3xl border border-neutral-800 bg-neutral-950/70 backdrop-blur-xl overflow-hidden text-left hover:border-indigo-500/60 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/50 transition-transform duration-200"
           >
-            <div className="relative aspect-[3/4] overflow-hidden">
+            <div className="relative aspect-3/4 overflow-hidden">
               {url ? (
                 <img
                   src={url}

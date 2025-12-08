@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useWorkspace } from "../context/WorkspaceContext";
 import MessageBubble from "../../chats/[chatId]/components/MessageBubble";
 import ChatInput from "../../chats/[chatId]/components/ChatInput";
 import ModelProfilePanel from "../../chats/[chatId]/components/ModelProfilePanel";
-import { ArrowLeft, User, Archive, Trash2, Clock, Check, CheckCheck, MoreVertical, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, User, Trash2, MoreVertical, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DashboardModel } from "../page";
 
@@ -17,24 +18,55 @@ interface ChatInterfaceProps {
 }
 
 export default function ChatInterface({ chatId, initialChatData }: ChatInterfaceProps) {
-    const { goBack, setShowRightPanel, showRightPanel } = useWorkspace();
+    const { goBack, setShowRightPanel, showRightPanel, setActiveChat, viewMode } = useWorkspace();
 
     const [chat, setChat] = useState<any>(initialChatData || null);
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(!initialChatData);
     const [modelData, setModelData] = useState<DashboardModel | null>(null);
-
-    // Actions State
-    const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [isArchiving, setIsArchiving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
 
     const bottomRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const [mounted, setMounted] = useState(false);
 
-    // Load Chat & Model Data - Reset on ID change
+    // Track previous chatId to detect actual changes
+    const prevChatIdRef = useRef<number | null>(null);
+    const isInitialMount = useRef(true);
+
+    // Set mounted state for portal
     useEffect(() => {
-        setChat(null); // Clear old chat immediately to show loading state or mock skel
+        setMounted(true);
+    }, []);
+
+    // Close profile panel when viewMode changes (e.g., navigating away from chats)
+    useEffect(() => {
+        if (viewMode !== "chats") {
+            setShowRightPanel(false);
+        }
+    }, [viewMode, setShowRightPanel]);
+
+    // Close profile panel when chatId changes (switching to different chat)
+    // Only close if chatId actually changed (not on initial mount)
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            prevChatIdRef.current = chatId;
+            return;
+        }
+        
+        if (prevChatIdRef.current !== null && prevChatIdRef.current !== chatId) {
+            console.log("Chat ID changed, closing profile panel", { prev: prevChatIdRef.current, new: chatId });
+            setShowRightPanel(false);
+        }
+        prevChatIdRef.current = chatId;
+    }, [chatId, setShowRightPanel]);
+
+    // Load Chat & Model Data
+    useEffect(() => {
+        setChat(null);
         setLoading(true);
         const loadData = async () => {
             try {
@@ -47,15 +79,36 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
                         const modelRes = await fetch(`${API_BASE}/models/${data.model.id}`);
                         if (modelRes.ok) {
                             const m = await modelRes.json();
-                            // Transform for Profile Panel
+                            // Normalize photos
+                            let photos = [];
+                            if (m.photos && Array.isArray(m.photos) && m.photos.length > 0) {
+                                photos = m.photos.map((p: any, idx: number) => {
+                                    if (typeof p === "string") {
+                                        const types = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                                        return { url: p, type: types[idx] || "Photo" };
+                                    }
+                                    if (!p.type) {
+                                        const types = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                                        p.type = types[idx] || "Photo";
+                                    }
+                                    return p;
+                                });
+                            } else {
+                                photos = [
+                                    { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Full Face" },
+                                    { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Side Profile" },
+                                    { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Full Body" },
+                                ];
+                            }
+                            
                             setModelData({
                                 id: m.id,
                                 name: m.name,
                                 age: m.age || 0,
                                 height: m.height_cm || m.height || 0,
                                 country: m.country || "Unknown",
-                                photos: m.photos || [],
-                                measurements: { bust: 82, waist: 60, hips: 90 }, // Mock
+                                photos: photos,
+                                measurements: { bust: 82, waist: 60, hips: 90 },
                                 motivation: m.motivation || "",
                                 status: m.status || "active",
                                 aiCategory: m.ai_category || null,
@@ -64,8 +117,11 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
                         }
                     }
                 }
-            } catch (err) { console.error(err); }
-            setLoading(false);
+            } catch (err) { 
+                console.error("Error loading chat:", err);
+            } finally {
+                setLoading(false);
+            }
         };
 
         loadData();
@@ -79,10 +135,16 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
                 if (res.ok) {
                     const data = await res.json();
                     setMessages(data);
-                    if (!loading) scrollToBottom();
+                    scrollToBottom();
                 }
-            } catch (err) { console.error(err); }
-            setLoading(false);
+                
+                // Mark as read
+                await fetch(`${API_BASE}/chats/${chatId}/mark-read`, {
+                    method: "POST",
+                });
+            } catch (err) { 
+                console.error("Error loading messages:", err);
+            }
         };
 
         loadMessages();
@@ -90,254 +152,328 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
         return () => clearInterval(interval);
     }, [chatId]);
 
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setShowMenu(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     const scrollToBottom = () => {
-        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        setTimeout(() => {
+            bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
     };
 
     const handleSend = async (text: string) => {
-        // ... same send logic ...
         try {
-            const res = await fetch(`${API_BASE}/chats/${chatId}/send-message?sender=agency&text=${encodeURIComponent(text)}`, { method: "POST" });
+            const res = await fetch(`${API_BASE}/chats/${chatId}/send-message?sender=agency&text=${encodeURIComponent(text)}`, { 
+                method: "POST" 
+            });
             if (res.ok) {
                 const msg = await res.json();
                 setMessages((prev: any) => [...prev, msg]);
                 scrollToBottom();
             }
-        } catch (err) { console.error(err); }
-    };
-
-    const handleArchive = async () => {
-        setIsArchiving(true);
-        // Simulate API
-        await new Promise(r => setTimeout(r, 1000));
-        // Implement actual API call here if backend supported
-        setIsArchiving(false);
-        setShowArchiveConfirm(false);
-        goBack(); // Return to list
+        } catch (err) { 
+            console.error("Error sending message:", err);
+        }
     };
 
     const handleDelete = async () => {
         setIsDeleting(true);
-        // Simulate API - DELETE Model
-        await new Promise(r => setTimeout(r, 1500));
-        // Implement actual API call here
-        setIsDeleting(false);
-        setShowDeleteConfirm(false);
-        goBack();
+        try {
+            const res = await fetch(`${API_BASE}/chats/${chatId}`, {
+                method: "DELETE",
+            });
+            if (res.ok) {
+                setActiveChat(null);
+                goBack();
+            } else {
+                throw new Error("Failed to delete chat");
+            }
+        } catch (err) {
+            console.error("Error deleting chat:", err);
+            alert("Failed to delete chat. Please try again.");
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteConfirm(false);
+            setShowMenu(false);
+        }
     };
 
-    // Countdown Logic
-    const getDaysRemaining = () => {
-        // Mock logic: 10 days from last message
-        const lastMsgDate = new Date(chat?.last_message_at || Date.now());
-        const expiryDate = new Date(lastMsgDate.getTime() + (10 * 24 * 60 * 60 * 1000));
-        const now = new Date();
-        const days = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return days > 0 ? days : 0;
-    };
+    if (loading) {
+        return (
+            <div className="flex h-full items-center justify-center bg-[#050505]">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-sm text-gray-400">Loading chat...</p>
+                </div>
+            </div>
+        );
+    }
 
-    if (loading) return <div className="flex h-full items-center justify-center text-slate-500">Loading chat...</div>;
+    const modelPhoto = chat?.model?.photos?.[0]?.url || 
+        (typeof chat?.model?.photos?.[0] === 'string' ? chat.model.photos[0] : null) ||
+        "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
 
     return (
         <div className="flex flex-col h-full relative bg-[#050505]">
-
-            {/* HEADER - Agency Style */}
-            <div className="flex items-center justify-between px-6 py-4 bg-[#050505] border-b border-white/5 relative z-20">
-                <div className="flex items-center gap-4">
-                    <button onClick={goBack} className="p-2 -ml-2 text-slate-400 hover:text-white lg:hidden">
-                        <ArrowLeft size={18} />
+            {/* HEADER - Premium Design */}
+            <div className="flex-none flex items-center justify-between px-6 py-4 bg-[#0A0A0A] border-b border-white/10 relative z-30">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <button 
+                        onClick={goBack} 
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors shrink-0 lg:hidden"
+                        aria-label="Back"
+                    >
+                        <ArrowLeft size={20} className="text-gray-400" />
                     </button>
 
-                    <div>
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2 tracking-tight">
-                            {chat?.model?.name || "Candidate Chat"}
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" title="Online" />
-                        </h2>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <div className="px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-[10px] uppercase font-bold tracking-wider">
-                                Application
-                            </div>
-                            <span className="text-slate-600">|</span>
-                            <span>Last active: Just now</span>
+                    {/* Model Avatar & Info */}
+                    <div 
+                        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setShowRightPanel(!showRightPanel)}
+                    >
+                        <div className="relative w-10 h-10 shrink-0">
+                            <img
+                                src={modelPhoto}
+                                alt={chat?.model?.name || "Model"}
+                                className="w-full h-full rounded-full object-cover border border-white/10"
+                            />
+                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0A0A0A]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-base font-bold text-white truncate">
+                                {chat?.model?.name || "Unknown"}
+                            </h2>
+                            <p className="text-xs text-gray-400 truncate">
+                                {chat?.model?.age && `${chat?.model?.age} y/o`}
+                                {chat?.model?.country && ` • ${chat?.model?.country}`}
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Header Actions */}
-                <div className="flex items-center gap-3">
-                    <div className="flex -space-x-3 mr-4 opacity-100 hover:space-x-1 transition-all duration-300">
-                        <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?w=64" className="w-8 h-8 rounded-full border-2 border-[#050505]" title="You" />
-                        <div className="w-8 h-8 rounded-full border-2 border-[#050505] bg-slate-800 text-[10px] flex items-center justify-center text-white font-bold">+1</div>
-                    </div>
-
-                    <div className="h-6 w-px bg-white/5" />
-
+                <div className="flex items-center gap-2 shrink-0">
                     <button
-                        onClick={() => setShowRightPanel(!showRightPanel)}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all text-xs font-semibold"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log("View Profile clicked", { 
+                                modelData: !!modelData, 
+                                showRightPanel, 
+                                chatId,
+                                modelDataName: modelData?.name 
+                            });
+                            const newValue = !showRightPanel;
+                            console.log("Setting showRightPanel to:", newValue);
+                            setShowRightPanel(newValue);
+                        }}
+                        className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 ${
+                            showRightPanel
+                                ? "bg-purple-600 text-white"
+                                : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10"
+                        }`}
                     >
-                        <User size={14} />
-                        Profile
+                        <User size={16} />
+                        View Profile
                     </button>
-                    <button className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                        <Archive size={16} />
-                    </button>
+
+                    {/* More Menu */}
+                    <div className="relative" ref={menuRef}>
+                        <button
+                            onClick={() => setShowMenu(!showMenu)}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+                            aria-label="More options"
+                        >
+                            <MoreVertical size={18} />
+                        </button>
+
+                        {showMenu && (
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-[#0A0A0A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                                <button
+                                    onClick={() => {
+                                        setShowDeleteConfirm(true);
+                                        setShowMenu(false);
+                                    }}
+                                    className="w-full px-4 py-3 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                >
+                                    <Trash2 size={16} />
+                                    Delete Chat
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* MESSAGES AREA - Slack Style */}
-            <div
-                className="flex-1 overflow-y-auto px-4 py-6 bg-[#0B0F19] scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent pb-10"
-            >
-                {/* Intro / Welcome to Channel */}
-                <div className="mb-8 mt-4 text-center">
-                    <div className="w-16 h-16 bg-slate-800 rounded-2xl mx-auto flex items-center justify-center mb-3">
-                        <User size={32} className="text-slate-500" />
-                    </div>
-                    <h3 className="text-white font-bold text-lg mb-1">
-                        Application: {chat?.model?.name}
-                    </h3>
-                    <p className="text-slate-500 text-xs">
-                        This is the start of your conversation with <strong>{chat?.model?.name}</strong>. Also includes your team.
-                    </p>
-                </div>
-
-                {messages.map((msg: any, i: number) => {
-                    const prevMsg = messages[i - 1];
-                    const isSameSender = prevMsg && prevMsg.sender === msg.sender;
-                    const timeDelta = (prevMsg?.timestamp && msg.timestamp)
-                        ? new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime()
-                        : 0;
-                    const isCloseInTime = timeDelta < 2 * 60 * 1000;
-
-                    const shouldGroup = isSameSender && isCloseInTime;
-
-                    const enrichedMsg = {
-                        ...msg,
-                        avatarUrl: msg.sender === 'agency'
-                            ? "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?w=64"
-                            : (chat?.model?.photos?.[0]?.url || chat?.model?.photos?.[0]),
-                        senderName: msg.sender === 'agency' ? "You" : chat?.model?.name
-                    };
-
-                    return (
-                        <div key={msg.id} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <MessageBubble
-                                msg={enrichedMsg}
-                                showHeader={!shouldGroup}
-                                showAvatar={!shouldGroup}
-                            />
+            {/* MESSAGES AREA */}
+            <div className="flex-1 overflow-y-auto px-6 py-6 bg-[#050505] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                {messages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center">
+                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                            <User size={32} className="text-gray-600" />
                         </div>
-                    );
-                })}
+                        <h3 className="text-lg font-bold text-white mb-2">
+                            Start the conversation
+                        </h3>
+                        <p className="text-sm text-gray-400 max-w-md">
+                            Send a message to {chat?.model?.name || "this model"} to begin your conversation.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="space-y-4 max-w-3xl mx-auto">
+                        {messages.map((msg: any, i: number) => {
+                            const prevMsg = messages[i - 1];
+                            const isSameSender = prevMsg && prevMsg.sender === msg.sender;
+                            const timeDelta = (prevMsg?.timestamp && msg.timestamp)
+                                ? new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime()
+                                : 0;
+                            const isCloseInTime = timeDelta < 2 * 60 * 1000;
+                            const shouldGroup = isSameSender && isCloseInTime;
+
+                            const enrichedMsg = {
+                                ...msg,
+                                avatarUrl: msg.sender === 'agency'
+                                    ? "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?w=64"
+                                    : modelPhoto,
+                                senderName: msg.sender === 'agency' ? "You" : chat?.model?.name
+                            };
+
+                            return (
+                                <MessageBubble
+                                    key={msg.id}
+                                    msg={enrichedMsg}
+                                    showHeader={!shouldGroup}
+                                    showAvatar={!shouldGroup}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
                 <div ref={bottomRef} className="h-4" />
             </div>
 
             {/* INPUT AREA */}
-            <div className="p-6 bg-[#050505] border-t border-white/5 relative z-20">
+            <div className="flex-none p-4 bg-[#0A0A0A] border-t border-white/10">
                 <ChatInput onSend={handleSend} />
-                <div className="text-center mt-3 opacity-50 hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] text-slate-500 font-medium">
-                        <strong>Shift + Enter</strong> for new line • <strong>/</strong> for templates
-                    </span>
-                </div>
             </div>
 
-            {/* PROFILE PANEL - Slide from right, no heavy backdrop */}
-            <AnimatePresence>
-                {showRightPanel && modelData && (
-                    <div className="absolute inset-0 z-50 flex">
-                        {/* Light backdrop */}
-                        <motion.div
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
+            {/* PROFILE PANEL - Slide from right - Rendered via Portal to escape overflow-hidden containers */}
+            {mounted && createPortal(
+                <AnimatePresence>
+                    {showRightPanel && (
+                        <motion.div 
+                            key={`profile-panel-${chatId}`}
+                            className="fixed inset-0 flex" 
+                            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="flex-1 bg-black/20"
-                            onClick={() => setShowRightPanel(false)}
-                        />
-                        {/* Slide-over Panel */}
-                        <motion.div
-                            initial={{ x: "100%" }}
-                            animate={{ x: 0 }}
-                            exit={{ x: "100%" }}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            className="w-full max-w-2xl h-full bg-[#0A0A0A] border-l border-white/10 shadow-2xl overflow-hidden flex flex-col"
-                            onClick={(e) => e.stopPropagation()}
                         >
-                            <ModelProfilePanel
-                                model={modelData}
-                                onClose={() => setShowRightPanel(false)}
+                            <motion.div
+                                initial={{ opacity: 0 }} 
+                                animate={{ opacity: 1 }} 
+                                exit={{ opacity: 0 }}
+                                className="flex-1 bg-black/30"
+                                onClick={() => {
+                                    console.log("Backdrop clicked, closing panel");
+                                    setShowRightPanel(false);
+                                }}
                             />
+                            <motion.div
+                                initial={{ x: "100%" }}
+                                animate={{ x: 0 }}
+                                exit={{ x: "100%" }}
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                className="w-full max-w-2xl h-full bg-[#0A0A0A] border-l border-white/10 shadow-2xl overflow-hidden flex flex-col"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {modelData ? (
+                                    <ModelProfilePanel
+                                        model={modelData}
+                                        onClose={() => {
+                                            console.log("ModelProfilePanel onClose called");
+                                            setShowRightPanel(false);
+                                        }}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full">
+                                        <div className="text-center">
+                                            <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                                            <p className="text-sm text-gray-400">Loading profile...</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </motion.div>
                         </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
-            {/* MODALS */}
-            {/* Archive Confirmation */}
-            <AnimatePresence>
-                {showArchiveConfirm && (
-                    <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-                    >
-                        <div className="bg-[#131722] border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-                            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                                <Archive className="text-amber-400" /> Archive Chat?
-                            </h3>
-                            <p className="text-sm text-slate-400 mb-6">
-                                This conversation will be moved to archived chats. You can restore it later.
-                            </p>
-                            <div className="flex gap-3">
-                                <button onClick={() => setShowArchiveConfirm(false)} className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-medium transition-colors">Cancel</button>
-                                <button
-                                    onClick={handleArchive}
-                                    disabled={isArchiving}
-                                    className="flex-1 py-2.5 rounded-xl bg-amber-600 text-white hover:bg-amber-500 font-bold transition-colors"
-                                >
-                                    {isArchiving ? "Archiving..." : "Archive"}
-                                </button>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Delete Confirmation */}
+            {/* DELETE CONFIRMATION MODAL */}
             <AnimatePresence>
                 {showDeleteConfirm && (
                     <motion.div
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-100 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+                        onClick={() => setShowDeleteConfirm(false)}
                     >
-                        <div className="bg-[#131722] border border-red-500/30 rounded-2xl p-6 max-w-md w-full shadow-[0_0_50px_rgba(239,68,68,0.2)]">
-                            <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                                <AlertTriangle className="text-red-500" /> PERMANENT DELETE
-                            </h3>
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="bg-[#0A0A0A] border border-red-500/30 rounded-xl p-6 max-w-md w-full shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                                    <Trash2 size={20} className="text-red-400" />
+                                </div>
+                                <h3 className="text-lg font-bold text-white">
+                                    Delete Chat?
+                                </h3>
+                            </div>
+                            
                             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
                                 <p className="text-sm text-red-200 font-medium leading-relaxed">
-                                    Warning: Closing this chat will <span className="font-bold underline">permanently delete</span> the model
+                                    This will <span className="font-bold underline">permanently delete</span> the chat with
                                     <span className="text-white mx-1">"{chat?.model?.name}"</span>
-                                    and all associated data from the system.
+                                    and remove the model from the system.
                                 </p>
-                                <p className="text-xs text-red-300 mt-2 uppercase font-bold tracking-wide">This action cannot be undone.</p>
+                                <p className="text-xs text-red-300 mt-2 uppercase font-bold tracking-wide">
+                                    This action cannot be undone.
+                                </p>
                             </div>
 
                             <div className="flex gap-3">
-                                <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-medium transition-colors">Cancel</button>
+                                <button 
+                                    onClick={() => setShowDeleteConfirm(false)} 
+                                    className="flex-1 px-4 py-2.5 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 font-semibold text-sm transition-colors"
+                                >
+                                    Cancel
+                                </button>
                                 <button
                                     onClick={handleDelete}
                                     disabled={isDeleting}
-                                    className="flex-1 py-3 rounded-xl bg-red-600 text-white hover:bg-red-500 font-bold transition-colors shadow-lg shadow-red-900/20"
+                                    className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 text-white hover:bg-red-700 font-bold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isDeleting ? "Deleting..." : "CLOSE & DELETE"}
+                                    {isDeleting ? "Deleting..." : "Delete Chat"}
                                 </button>
                             </div>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </div>
     );
 }
