@@ -3,10 +3,12 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from typing import Optional
 import secrets
-import os
+from jose import jwt
 
 from app.database import get_db
+from app.config import settings
 
 # Optional imports - only load if available
 try:
@@ -35,18 +37,46 @@ class SignupRequest(BaseModel):
     agency_name: str
     full_name: str
     password: str
-    card_number: str
-    expiry_date: str  # MM/YY format
-    cvv: str
-    cardholder_name: str
-    device_fingerprint: str | None = None
+    payment_method_id: str  # Stripe PaymentMethod ID from Elements
+    device_fingerprint: Optional[str] = None
 
 
 class SignupResponse(BaseModel):
     success: bool
     message: str
-    user_id: int | None = None
+    user_id: Optional[int] = None
     requires_email_verification: bool = False
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginResponse(BaseModel):
+    success: bool
+    message: str
+    token: Optional[str] = None
+    user: Optional[dict] = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    success: bool
+    message: str
 
 
 # ============================
@@ -83,6 +113,27 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def generate_verification_token() -> str:
     """Generate email verification token"""
     return secrets.token_urlsafe(32)
+
+
+def generate_reset_token() -> str:
+    """Generate password reset token"""
+    return secrets.token_urlsafe(32)
+
+
+def generate_jwt_token(user_id: int, email: str) -> str:
+    """Generate JWT token for user session"""
+    if not settings.JWT_SECRET_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="JWT_SECRET_KEY is not configured. Please set it in environment variables."
+        )
+    
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "exp": datetime.utcnow() + timedelta(days=settings.JWT_EXPIRATION_DAYS)
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 # ============================
@@ -133,15 +184,7 @@ async def signup(
         )
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # 3. Parse expiry date
-    try:
-        month, year = payload.expiry_date.split("/")
-        expiry_month = int(month)
-        expiry_year = int(year)
-    except:
-        raise HTTPException(status_code=400, detail="Invalid expiry date format")
-    
-    # 4. Create Stripe customer and payment method
+    # 3. Create Stripe customer and attach payment method
     try:
         # Create customer
         stripe_customer = stripe_service.StripeService.create_customer(
@@ -153,23 +196,18 @@ async def signup(
             }
         )
         
-        # Create payment method
-        payment_method = stripe_service.StripeService.create_payment_method(
-            card_number=payload.card_number,
-            expiry_month=expiry_month,
-            expiry_year=expiry_year,
-            cvc=payload.cvv,
-            cardholder_name=payload.cardholder_name
-        )
+        # Payment method is already created by Stripe Elements on frontend
+        # Just attach it to customer and verify
+        payment_method_id = payload.payment_method_id
         
         # Attach payment method to customer
         stripe_service.StripeService.attach_payment_method_to_customer(
-            payment_method.id,
+            payment_method_id,
             stripe_customer.id
         )
         
         # Check for duplicate payment method (via fingerprint)
-        fingerprint = stripe_service.StripeService.get_payment_method_fingerprint(payment_method.id)
+        fingerprint = stripe_service.StripeService.get_payment_method_fingerprint(payment_method_id)
         if fingerprint:
             # Check if this fingerprint has been used before
             existing_with_fingerprint = db.query(User).filter(
@@ -190,14 +228,14 @@ async def signup(
     
     # 5. Create subscription with 7-day trial
     try:
-        price_id = os.getenv("STRIPE_PRICE_ID", "")  # Set this in your .env
+        price_id = settings.STRIPE_PRICE_ID
         if not price_id:
             # For development, skip subscription creation
             subscription_id = None
         else:
             subscription = stripe_service.StripeService.create_subscription(
                 customer_id=stripe_customer.id,
-                payment_method_id=payment_method.id,
+                payment_method_id=payment_method_id,
                 price_id=price_id,
                 trial_days=7
             )
@@ -222,7 +260,7 @@ async def signup(
         email_verified=False,  # Require email verification
         email_verification_token=verification_token,
         stripe_customer_id=stripe_customer.id,
-        stripe_payment_method_id=payment_method.id,
+        stripe_payment_method_id=payment_method_id,
         subscription_status="trial",
         signup_ip=client_ip,
         device_fingerprint=payload.device_fingerprint,
@@ -239,8 +277,13 @@ async def signup(
         success=True
     )
     
-    # 8. Send verification email (implement this)
-    # send_verification_email(payload.email, verification_token)
+    # 8. Send verification email
+    try:
+        from app.services import email_service
+        email_service.send_verification_email(payload.email, verification_token)
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error sending verification email: {e}")
     
     return SignupResponse(
         success=True,
@@ -250,9 +293,232 @@ async def signup(
     )
 
 
+@router.get("/me")
+def get_current_user_info(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get current user information from JWT token"""
+    if not FRAUD_PREVENTION_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service is not available."
+        )
+    
+    # Get token from Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(
+            status_code=401,
+            detail="Authorization header required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        # Extract token from "Bearer <token>"
+        scheme, token = auth_header.split()
+        if scheme.lower() != "bearer":
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication scheme",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except ValueError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not settings.JWT_SECRET_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="JWT_SECRET_KEY is not configured"
+        )
+    
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        user_id: int = payload.get("user_id")
+        if user_id is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token"
+            )
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token"
+        )
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="User account is deactivated"
+        )
+    
+    return {
+        "id": user.id,
+        "email": user.email,
+        "agency_name": user.agency_name,
+        "full_name": user.full_name,
+        "email_verified": user.email_verified,
+        "subscription_status": user.subscription_status,
+        "is_admin": user.is_admin,
+        "trial_ends_at": user.trial_ends_at.isoformat() if user.trial_ends_at else None
+    }
+
+
+@router.post("/login", response_model=LoginResponse)
+def login(
+    payload: LoginRequest,
+    db: Session = Depends(get_db)
+):
+    """Login endpoint"""
+    if not FRAUD_PREVENTION_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Login service is not available. Authentication system not configured."
+        )
+    
+    # Find user by email
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Wrong email or password")
+    
+    # Verify password
+    if not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Wrong email or password")
+    
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated")
+    
+    # Generate JWT token
+    token = generate_jwt_token(user.id, user.email)
+    
+    return LoginResponse(
+        success=True,
+        message="Login successful",
+        token=token,
+        user={
+            "id": user.id,
+            "email": user.email,
+            "agency_name": user.agency_name,
+            "full_name": user.full_name,
+            "email_verified": user.email_verified,
+            "subscription_status": user.subscription_status,
+            "is_admin": user.is_admin
+        }
+    )
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """Forgot password endpoint - sends reset email"""
+    if not FRAUD_PREVENTION_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Password reset service is not available. Authentication system not configured."
+        )
+    
+    # Find user by email
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    
+    # Always return success message (security: don't reveal if email exists)
+    if not user:
+        return ForgotPasswordResponse(
+            success=True,
+            message="If an account with that email exists, a password reset link has been sent."
+        )
+    
+    # Generate reset token
+    reset_token = generate_reset_token()
+    reset_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+    
+    # Save reset token to user
+    user.password_reset_token = reset_token
+    user.password_reset_expires_at = reset_expires
+    db.commit()
+    
+    # Send reset email (mock for now)
+    try:
+        from app.services import email_service
+        email_service.send_password_reset_email(user.email, reset_token)
+    except Exception as e:
+        # Log error but don't fail the request
+        print(f"Error sending password reset email: {e}")
+    
+    return ForgotPasswordResponse(
+        success=True,
+        message="If an account with that email exists, a password reset link has been sent."
+    )
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """Reset password endpoint"""
+    if not FRAUD_PREVENTION_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Password reset service is not available. Authentication system not configured."
+        )
+    
+    # Find user by reset token
+    user = db.query(User).filter(User.password_reset_token == payload.token).first()
+    
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Check if token is expired
+    if user.password_reset_expires_at and user.password_reset_expires_at < datetime.utcnow():
+        user.password_reset_token = None
+        user.password_reset_expires_at = None
+        db.commit()
+        raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    # Validate password strength
+    if len(payload.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+    
+    # Update password
+    user.password_hash = hash_password(payload.new_password)
+    user.password_reset_token = None
+    user.password_reset_expires_at = None
+    db.commit()
+    
+    return ResetPasswordResponse(
+        success=True,
+        message="Password has been reset successfully"
+    )
+
+
 @router.post("/verify-email/{token}")
 def verify_email(token: str, db: Session = Depends(get_db)):
     """Verify email address"""
+    if not FRAUD_PREVENTION_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Email verification service is not available."
+        )
+    
     user = db.query(User).filter(User.email_verification_token == token).first()
     
     if not user:

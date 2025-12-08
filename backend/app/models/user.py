@@ -23,10 +23,18 @@ class User(Base):
     email_verified = Column(Boolean, default=False)
     email_verification_token = Column(String, nullable=True)
     
+    # Password reset
+    password_reset_token = Column(String, nullable=True, index=True)
+    password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
+    
     # Payment
     stripe_customer_id = Column(String, nullable=True, index=True)
     stripe_payment_method_id = Column(String, nullable=True)
     subscription_status = Column(String, default="trial")  # trial, active, cancelled, expired
+    
+    # Admin & Roles
+    is_admin = Column(Boolean, default=False, nullable=False)
+    role = Column(String, default="agency", nullable=False)  # admin, agency
     
     # Fraud prevention tracking
     signup_ip = Column(String, nullable=True)

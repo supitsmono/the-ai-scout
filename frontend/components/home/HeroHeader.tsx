@@ -56,6 +56,12 @@ export const HeroHeader = ({ setPanel }: { setPanel?: (v: any) => void }) => {
                                 {link.name}
                             </button>
                         ))}
+                        <Link
+                            href="/contact"
+                            className="text-sm font-medium text-slate-400 hover:text-white transition-colors"
+                        >
+                            Contact
+                        </Link>
                     </nav>
                 </div>
 
@@ -113,6 +119,13 @@ export const HeroHeader = ({ setPanel }: { setPanel?: (v: any) => void }) => {
                                     {link.name}
                                 </button>
                             ))}
+                            <Link
+                                href="/contact"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-slate-300 hover:text-cyan-400 font-medium text-left"
+                            >
+                                Contact
+                            </Link>
                         </nav>
                     </motion.div>
                 )}

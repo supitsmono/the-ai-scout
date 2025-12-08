@@ -9,3 +9,5 @@ python-jose
 alembic   # database migrations later
 jinja2    # voor email templates magic link
 stripe    # payment processing and fraud detection
+psycopg2-binary  # PostgreSQL driver
+python-dotenv  # Environment variable loading

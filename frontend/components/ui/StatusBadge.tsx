@@ -4,28 +4,32 @@ export default function StatusBadge({ status }) {
   const map = {
     perfectFit: {
       label: "Perfect Fit",
-      color: "bg-emerald-500 text-white",
+      className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     },
     goodFit: {
       label: "Good Fit",
-      color: "bg-cyan-500 text-white",
+      className: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     },
     lowPotential: {
       label: "Low Potential",
-      color: "bg-slate-500 text-white",
+      className: "bg-slate-500/10 text-slate-400 border-slate-500/20",
     },
     favorite: {
       label: "Favorite",
-      color: "bg-cyan-500 text-white",
+      className: "bg-pink-500/10 text-pink-400 border-pink-500/20",
     },
     rejected: {
       label: "Rejected",
-      color: "bg-slate-600 text-white",
+      className: "bg-red-500/10 text-red-400 border-red-500/20",
     },
     contacted: {
       label: "Contacted",
-      color: "bg-emerald-400 text-white",
+      className: "bg-amber-500/10 text-amber-400 border-amber-500/20",
     },
+    active: {
+      label: "Active",
+      className: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+    }
   };
 
   const style = map[status] || map["goodFit"];
@@ -33,9 +37,9 @@ export default function StatusBadge({ status }) {
   return (
     <span
       className={`
-        px-3 py-1 text-xs font-bold rounded-full
-        border border-white/10 shadow-md
-        ${style.color}
+        px-2.5 py-0.5 text-[11px] font-medium rounded-md
+        border
+        ${style.className}
       `}
     >
       {style.label}

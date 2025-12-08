@@ -31,70 +31,66 @@ const ModelCard = memo(function ModelCard({
     if (!model.photos || model.photos.length === 0) {
       return "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
     }
-    
+
     // Look for Full Face photo first
     const fullFacePhoto = model.photos.find((p: any) => {
       const photo = typeof p === 'string' ? { url: p } : p;
       const type = photo.type?.toLowerCase() || '';
       return type.includes('full face') || type.includes('headshot') || type === 'full face';
     });
-    
+
     if (fullFacePhoto) {
       return typeof fullFacePhoto === 'string' ? fullFacePhoto : fullFacePhoto.url;
     }
-    
+
     // Fallback to first photo
     const firstPhoto = model.photos[0];
     return typeof firstPhoto === 'string' ? firstPhoto : (firstPhoto?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg");
   };
-  
+
   const photoUrl = findProfilePhoto();
-  
+
   // Only show colors in specific tabs, not in "All"
   const showColors = selectedTab !== "all";
-  
+
   // Clean color scheme without purple or glow effects
   const getCardStyles = () => {
     if (selectionMode && isSelected) {
       return {
-        bg: "bg-slate-800/60",
-        border: "border-slate-500/80",
-        shadow: "shadow-md",
-        scale: "scale-[1.01]",
+        bg: "bg-slate-800/80",
+        border: "border-slate-600",
+        shadow: "",
+        scale: "",
       };
     }
     if (isActive) {
       return {
-        bg: "bg-slate-800/50",
-        border: "border-slate-600/70",
-        shadow: "shadow-md",
-        scale: "scale-[1.01]",
+        bg: "bg-slate-800/40",
+        border: "border-slate-700",
+        shadow: "",
+        scale: "",
       };
     }
     return {
-      bg: "bg-slate-900/50",
-      border: "border-slate-700/40",
-      shadow: "shadow-sm",
-      scale: "scale-100",
+      bg: "bg-transparent",
+      border: "border-slate-800/60",
+      shadow: "",
+      scale: "",
     };
   };
 
   const cardStyles = getCardStyles();
-  
-  // Ring colors based on category
+
+  // Ring colors based on category - Subtle borders now
   const getRingColor = () => {
-    if (!showColors) return "border-slate-700/30";
-    if (model.aiCategory === "perfectFit") return "border-emerald-500/60";
-    if (model.aiCategory === "goodFit") return "border-cyan-500/60";
-    return "border-slate-600/50";
+    if (!showColors) return "border-slate-800";
+    if (model.aiCategory === "perfectFit") return "border-emerald-500/40";
+    if (model.aiCategory === "goodFit") return "border-blue-500/40"; // Blue instant of Cyan
+    return "border-slate-800";
   };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2, delay: index * 0.02 }}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -104,76 +100,60 @@ const ModelCard = memo(function ModelCard({
           onClick();
         }
       }}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
-      className={`group relative flex items-start gap-3 p-3.5 rounded-xl cursor-pointer transition-all duration-300 border ${cardStyles.bg} ${cardStyles.border} ${cardStyles.shadow} ${cardStyles.scale} hover:border-opacity-80`}
+      className={`group relative flex items-start gap-3 p-3.5 rounded-lg cursor-pointer transition-colors duration-200 border ${cardStyles.bg} ${cardStyles.border} hover:bg-slate-900/40 hover:border-slate-700`}
     >
       {/* Selection Overlay/Checkbox */}
       {selectionMode && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
+        <div
           className="absolute top-3 right-3 z-10"
         >
           {isSelected ? (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            >
-              <CheckSquare size={18} className="text-cyan-400" />
-            </motion.div>
+            <CheckSquare size={16} className="text-blue-400" />
           ) : (
-            <Square size={18} className="text-slate-600 group-hover:text-slate-500 transition-colors" />
+            <Square size={16} className="text-slate-600 group-hover:text-slate-500 transition-colors" />
           )}
-        </motion.div>
+        </div>
       )}
 
       {/* Photo */}
-      <motion.div
-        whileHover={{ scale: 1.05 }}
-        className={`relative w-16 h-16 shrink-0 rounded-xl p-[2px] border-2 ${getRingColor()} transition-all duration-300`}
+      <div
+        className={`relative w-12 h-12 shrink-0 rounded-lg p-[1px] border ${getRingColor()} transition-colors`}
       >
-        <div className="w-full h-full rounded-lg overflow-hidden bg-slate-800 relative group-hover:brightness-110 transition-all duration-300">
+        <div className="w-full h-full rounded-[7px] overflow-hidden bg-slate-800 relative">
           <img
             src={photoUrl}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
             alt={model.name}
             loading="lazy"
           />
         </div>
-      </motion.div>
+      </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0 pt-0.5">
         <div className="flex justify-between items-start gap-2">
-          <motion.h3
-            whileHover={{ x: 2 }}
-            className={`text-sm font-bold truncate transition-colors ${
-              isActive ? "text-white" : "text-slate-300 group-hover:text-white"
-            }`}
+          <h3
+            className={`text-sm font-medium truncate transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"
+              }`}
           >
             {model.name}
-          </motion.h3>
-          
-          {/* TOP badge */}
+          </h3>
+
+          {/* TOP badge - Subtle */}
           {showColors && model.aiCategory === 'perfectFit' && !selectionMode && (
-            <motion.div
-              initial={{ scale: 0, rotate: -10 }}
-              animate={{ scale: 1, rotate: 0 }}
-              className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/50"
+            <div
+              className="flex items-center gap-0.5 text-[9px] font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20"
             >
-              <Sparkles size={9} />
               TOP
-            </motion.div>
+            </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 mt-1.5 text-[11px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
-          <span className="font-semibold">{model.age}y</span>
-          <span className="w-1 h-1 bg-slate-500 rounded-full" />
+        <div className="flex items-center gap-2 mt-1 text-[11px] font-medium text-slate-500 group-hover:text-slate-400 transition-colors">
+          <span>{model.age}y</span>
+          <span className="w-0.5 h-0.5 bg-slate-700 rounded-full" />
           <span>{model.height}cm</span>
-          <span className="w-1 h-1 bg-slate-500 rounded-full" />
+          <span className="w-0.5 h-0.5 bg-slate-700 rounded-full" />
           <span className="truncate">
             {model.country}
           </span>

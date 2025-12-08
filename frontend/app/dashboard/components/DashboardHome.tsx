@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { useWorkspace } from "../context/WorkspaceContext";
+import SubscriptionStatus from "./SubscriptionStatus";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -154,22 +155,25 @@ export default function DashboardHome() {
                 </div>
             </div>
 
+            {/* Subscription Status */}
+            <SubscriptionStatus />
+
             {/* Key Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
                     label="Total Applications"
                     value={totalApplications.toString()}
                     subtext={`${perfectFitCount} Perfect Fit`}
-                    icon={<Users className="text-white" />}
-                    color="bg-cyan-500"
+                    icon={Users}
+                    variant="blue"
                     onClick={() => setViewMode("applications")}
                 />
                 <MetricCard
                     label="Perfect Fit"
                     value={perfectFitCount.toString()}
                     subtext="AI classified"
-                    icon={<Star className="text-white" />}
-                    color="bg-emerald-500"
+                    icon={Star}
+                    variant="emerald"
                     onClick={() => {
                         setViewMode("applications");
                         // TODO: Set filter to perfectFit
@@ -179,15 +183,15 @@ export default function DashboardHome() {
                     label="In Review"
                     value={reviewingCount.toString()}
                     subtext="Pending action"
-                    icon={<Clock className="text-white" />}
-                    color="bg-slate-500"
+                    icon={Clock}
+                    variant="slate"
                 />
                 <MetricCard
                     label="Unread Messages"
                     value={unreadCount.toString()}
                     subtext="Requires attention"
-                    icon={<MessageSquare className="text-white" />}
-                    color="bg-cyan-500"
+                    icon={MessageSquare}
+                    variant="blue"
                     onClick={() => setViewMode("chats")}
                 />
             </div>
@@ -222,8 +226,8 @@ export default function DashboardHome() {
                                     </TableHeader>
                                     <TableBody>
                                         {recentModels.map((model) => (
-                                            <TableRow 
-                                                key={model.id} 
+                                            <TableRow
+                                                key={model.id}
                                                 className="border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors group cursor-pointer"
                                                 onClick={() => {
                                                     setSelectedModel(model.id);
@@ -280,7 +284,7 @@ export default function DashboardHome() {
                             </div>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
+                                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                                     <span className="text-sm text-slate-300">Good Fit</span>
                                 </div>
                                 <span className="text-sm font-bold text-white">{goodFitCount}</span>
@@ -306,16 +310,16 @@ export default function DashboardHome() {
                     <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-5">
                         <h3 className="font-bold text-white text-sm mb-4">Quick Actions</h3>
                         <div className="space-y-2">
-                            <Button 
-                                variant="ghost" 
+                            <Button
+                                variant="ghost"
                                 className="w-full justify-start text-slate-300 hover:text-white hover:bg-white/5"
                                 onClick={() => setViewMode("applications")}
                             >
                                 <Users className="mr-2 h-4 w-4" />
                                 View Applications
                             </Button>
-                            <Button 
-                                variant="ghost" 
+                            <Button
+                                variant="ghost"
                                 className="w-full justify-start text-slate-300 hover:text-white hover:bg-white/5"
                                 onClick={() => setViewMode("chats")}
                             >
@@ -331,20 +335,37 @@ export default function DashboardHome() {
     );
 }
 
-function MetricCard({ label, value, subtext, icon, color, onClick }: any) {
-    // Map color to shadow
-    const shadowClass = color === "bg-cyan-500" ? "shadow-cyan-500/20" : 
-                       color === "bg-emerald-500" ? "shadow-emerald-500/20" : 
-                       "shadow-slate-500/20";
-    
+function MetricCard({ label, value, subtext, icon: Icon, variant = "slate", onClick }: any) {
+    const getStyles = () => {
+        switch (variant) {
+            case "blue": return {
+                iconBg: "bg-blue-500/10",
+                iconColor: "text-blue-400",
+                borderHover: "hover:border-blue-500/20"
+            };
+            case "emerald": return {
+                iconBg: "bg-emerald-500/10",
+                iconColor: "text-emerald-400",
+                borderHover: "hover:border-emerald-500/20"
+            };
+            default: return {
+                iconBg: "bg-slate-800",
+                iconColor: "text-slate-400",
+                borderHover: "hover:border-slate-700"
+            };
+        }
+    };
+
+    const styles = getStyles();
+
     return (
-        <div 
-            className={`bg-[#0A0A0A] border border-white/5 rounded-xl p-5 relative group overflow-hidden transition-all hover:border-white/10 hover:bg-[#0F0F0F] ${onClick ? 'cursor-pointer' : ''}`}
+        <div
+            className={`bg-[#0A0A0A] border border-white/5 rounded-xl p-5 relative group overflow-hidden transition-all hover:bg-[#0F0F0F] ${styles.borderHover} ${onClick ? 'cursor-pointer' : ''}`}
             onClick={onClick}
         >
             <div className="flex items-center justify-between mb-3">
-                <div className={`w-10 h-10 rounded-lg ${color} flex items-center justify-center shadow-lg ${shadowClass}`}>
-                    {icon}
+                <div className={`w-10 h-10 rounded-lg ${styles.iconBg} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${styles.iconColor}`} />
                 </div>
             </div>
             <div className="text-2xl font-bold text-white mb-1 tracking-tight">{value}</div>

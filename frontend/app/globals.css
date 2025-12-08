@@ -3,6 +3,8 @@
 ----------------------------------------------------------- */
 @import "tailwindcss";
 
+@custom-variant dark (&:is(.dark *));
+
 @layer theme {
   :root {
     --background: 0 0% 100%;
@@ -33,7 +35,6 @@ body {
   overflow-x: hidden;
 }
 
-
 /* -----------------------------------------------------------
    UNIVERSAL INPUT STYLE (used everywhere)
 ----------------------------------------------------------- */
@@ -41,7 +42,6 @@ body {
 .input {
   @apply w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-100 outline-none transition-colors focus:border-cyan-400 focus:bg-slate-950;
 }
-
 
 /* -----------------------------------------------------------
    Scrollbar styling (premium dark UI)
@@ -63,7 +63,6 @@ body {
   @apply bg-slate-600;
 }
 
-
 /* -----------------------------------------------------------
    Selection colors
 ----------------------------------------------------------- */
@@ -72,7 +71,6 @@ body {
   /* cyan-400 */
   color: white;
 }
-
 
 /* -----------------------------------------------------------
    General typography improvements
@@ -85,7 +83,6 @@ button,
 textarea {
   @apply tracking-tight;
 }
-
 
 /* -----------------------------------------------------------
    Smooth fade animations
@@ -107,14 +104,12 @@ textarea {
   }
 }
 
-
 /* -----------------------------------------------------------
    Card UI used across dashboard + homepage
 ----------------------------------------------------------- */
 .card {
   @apply rounded-2xl border border-slate-800 bg-slate-950/70 shadow-md;
 }
-
 
 /* -----------------------------------------------------------
    Button classes (optional but used widely)
@@ -132,7 +127,6 @@ textarea {
   @apply inline-flex items-center justify-center rounded-full bg-red-600 text-white text-xs font-medium px-5 py-2.5 hover:bg-red-700 transition;
 }
 
-
 /* -----------------------------------------------------------
    Form section labels
 ----------------------------------------------------------- */
@@ -143,7 +137,6 @@ textarea {
 .section-sub {
   @apply text-[11px] text-slate-400;
 }
-
 
 /* -----------------------------------------------------------
    Remove Number Input Spinners (Webkit + Firefox)
@@ -156,4 +149,66 @@ input[type=number]::-webkit-outer-spin-button {
 
 input[type=number] {
   -moz-appearance: textfield;
+}
+
+:root {
+  --sidebar: hsl(0 0% 98%);
+  --sidebar-foreground: hsl(240 5.3% 26.1%);
+  --sidebar-primary: hsl(240 5.9% 10%);
+  --sidebar-primary-foreground: hsl(0 0% 98%);
+  --sidebar-accent: hsl(240 4.8% 95.9%);
+  --sidebar-accent-foreground: hsl(240 5.9% 10%);
+  --sidebar-border: hsl(220 13% 91%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+.dark {
+  --sidebar: hsl(240 5.9% 10%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-primary: hsl(224.3 76.3% 48%);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: hsl(240 3.7% 15.9%);
+  --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
+  --sidebar-border: hsl(240 3.7% 15.9%);
+  --sidebar-ring: hsl(217.2 91.2% 59.8%);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-slate-800;
+  }
+  body {
+    @apply bg-[#050816] text-white;
+  }
 }

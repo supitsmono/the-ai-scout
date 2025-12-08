@@ -45,7 +45,7 @@ export default function PipelineBoard() {
       setLoading(true);
       try {
         const allModels: Record<string, DashboardModel[]> = {};
-        
+
         // Load models for each stage
         for (const stage of stages) {
           try {
@@ -78,7 +78,7 @@ export default function PipelineBoard() {
             allModels[stage.key] = [];
           }
         }
-        
+
         setModelsByStage(allModels);
       } catch (err) {
         console.error("Error loading models:", err);
@@ -183,9 +183,8 @@ export default function PipelineBoard() {
           return (
             <div
               key={stage.key}
-              className={`w-80 flex-shrink-0 flex flex-col transition-all ${
-                dragOverStage === stage.key ? "ring-2 ring-purple-500 rounded-lg" : ""
-              }`}
+              className={`w-80 flex-shrink-0 flex flex-col transition-all ${dragOverStage === stage.key ? "ring-2 ring-blue-500/50 rounded-lg bg-blue-500/5" : ""
+                }`}
               onDragOver={(e) => handleDragOver(e, stage.key)}
               onDragLeave={handleDragLeave}
               onDrop={() => handleDrop(stage.key)}
@@ -204,13 +203,10 @@ export default function PipelineBoard() {
               </div>
 
               {/* Models in this stage */}
-              <div className={`flex-1 overflow-y-auto space-y-3 pb-4 rounded-b-lg transition-colors ${
-                dragOverStage === stage.key ? "bg-purple-500/5" : ""
-              }`}>
+              <div className={`flex-1 overflow-y-auto space-y-3 pb-4 rounded-b-lg transition-colors`}>
                 {models.length === 0 ? (
-                  <div className={`text-center py-8 text-gray-600 text-sm border-2 border-dashed rounded-lg transition-colors ${
-                    dragOverStage === stage.key ? "border-purple-500/50 bg-purple-500/10" : "border-white/10"
-                  }`}>
+                  <div className={`text-center py-8 text-gray-600 text-sm border-2 border-dashed rounded-lg transition-colors ${dragOverStage === stage.key ? "border-blue-500/30 bg-blue-500/5 text-blue-400" : "border-white/10"
+                    }`}>
                     {dragOverStage === stage.key ? "Drop here" : "No models"}
                   </div>
                 ) : (

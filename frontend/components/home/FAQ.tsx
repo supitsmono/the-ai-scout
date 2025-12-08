@@ -16,10 +16,7 @@ const faqs = [
         question: "Is my data secure?",
         answer: "Absolutely. All data is encrypted and stored securely. Your applications are private and never shared with other agencies.",
     },
-    {
-        question: "What if I get more than 500 applications?",
-        answer: "No problem. We process all applications. If you regularly get more, you can upgrade to the Pro plan for unlimited applications.",
-    },
+
 ];
 
 export default function FAQ() {

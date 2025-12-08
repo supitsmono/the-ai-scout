@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useWorkspace } from "../../app/dashboard/context/WorkspaceContext";
+import { useAuth } from "../../app/context/AuthContext";
 import { Logo } from "@/components/logo";
 import {
   LayoutGrid,
@@ -13,7 +14,8 @@ import {
   BarChart2,
   Settings,
   Bell,
-  LogOut
+  LogOut,
+  Shield
 } from "lucide-react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -22,6 +24,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { viewMode, setViewMode } = useWorkspace();
+  const { user, logout } = useAuth();
 
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -155,6 +158,15 @@ export default function Sidebar() {
       <div className="grow" />
 
       <div className="border-t border-white/5 pt-4 mb-2">
+        {user?.is_admin && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-3 w-full text-left px-4 py-2.5 rounded-lg font-medium text-sm text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition-colors mb-2"
+          >
+            <Shield className="w-5 h-5" />
+            <span>Admin Panel</span>
+          </Link>
+        )}
         <button className="flex items-center gap-3 w-full text-left px-4 py-2.5 rounded-lg font-medium text-sm text-slate-500 hover:text-white hover:bg-white/5 transition-colors">
           <Bell className="w-5 h-5" />
           <span>Notifications</span>
@@ -171,6 +183,16 @@ export default function Sidebar() {
           <Settings className="w-5 h-5" />
           <span>Account</span>
         </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            logout();
+          }}
+          className="flex items-center gap-3 w-full text-left px-4 py-2.5 rounded-lg font-medium text-sm text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Logout</span>
+        </button>
       </div>
 
       <div className="flex items-center gap-3 px-4 py-3 mt-2 rounded-xl bg-white/5 border border-white/5">
@@ -179,8 +201,8 @@ export default function Sidebar() {
           <img src="https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150" className="w-full h-full object-cover opacity-80" />
         </div>
         <div className="flex flex-col overflow-hidden min-w-0">
-          <span className="text-sm font-medium text-white truncate">Agency User</span>
-          <span className="text-[10px] text-slate-500 truncate">user@aiscout.com</span>
+          <span className="text-sm font-medium text-white truncate">{user?.full_name || "Agency User"}</span>
+          <span className="text-[10px] text-slate-500 truncate">{user?.email || "user@aiscout.com"}</span>
         </div>
       </div>
     </aside>

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import HeroSection from "@/components/home/HeroSection";
 import Features from "@/components/home/Features";
 import Testimonials from "@/components/home/Testimonials";
 import FAQ from "@/components/home/FAQ";
+import Footer from "@/components/home/Footer";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { X } from "lucide-react";
+import DemoVideo from "@/components/home/DemoVideo";
 
 // Modal Content Placeholders (Agency Style)
 const ModalAgencies = () => (
@@ -99,6 +100,49 @@ const ModalPricing = () => (
   </div>
 );
 
+const ModalDemo = () => {
+  return (
+    <div className="w-full h-full max-w-6xl mx-auto animate-in zoom-in-95 duration-300 flex flex-col">
+      {/* Header - Compact */}
+      <div className="flex-shrink-0 bg-[#0A0A0A] border-b border-white/10 p-3 sm:p-4">
+        <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-0.5 sm:mb-1">See The AI Scout in Action</h2>
+        <p className="text-[10px] sm:text-xs text-slate-400">
+          Discover how our AI-powered dashboard helps agencies find perfect models in seconds
+        </p>
+      </div>
+
+      {/* Animated Demo Video - Takes remaining space */}
+      <div className="flex-1 min-h-0 p-2 sm:p-3 md:p-4">
+        <DemoVideo />
+      </div>
+
+      {/* Features Highlight - Compact footer */}
+      <div className="flex-shrink-0 p-2 sm:p-3 border-t border-white/10">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="p-2 sm:p-3 bg-white/5 border border-white/5 rounded-lg">
+            <h3 className="font-semibold text-white mb-0.5 text-[10px] sm:text-xs">AI Pipeline</h3>
+            <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">
+              Automatic sorting
+            </p>
+          </div>
+          <div className="p-2 sm:p-3 bg-white/5 border border-white/5 rounded-lg">
+            <h3 className="font-semibold text-white mb-0.5 text-[10px] sm:text-xs">Smart Filtering</h3>
+            <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">
+              Filter by criteria
+            </p>
+          </div>
+          <div className="p-2 sm:p-3 bg-white/5 border border-white/5 rounded-lg">
+            <h3 className="font-semibold text-white mb-0.5 text-[10px] sm:text-xs">Direct Contact</h3>
+            <p className="text-[9px] sm:text-[10px] text-slate-400 leading-tight">
+              Chat with models
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default function Home() {
   const [activePanel, setActivePanel] = useState<string | null>(null);
@@ -121,17 +165,30 @@ export default function Home() {
         <FAQ />
       </div>
 
+      {/* Footer */}
+      <div className="container mx-auto px-6">
+        <Footer />
+      </div>
+
       {/* Back To Top Utility */}
       <BackToTop />
 
       {/* Content Modals */}
       <Dialog open={!!activePanel} onOpenChange={() => setActivePanel(null)}>
-        <DialogContent className="max-w-4xl bg-[#0A0A0A] border-white/10 text-slate-200 p-0 overflow-hidden shadow-2xl">
-          <div className="relative">
+        <DialogContent className={`max-w-[95vw] w-full bg-[#0A0A0A] border-white/10 text-slate-200 p-0 overflow-hidden shadow-2xl m-2 sm:m-4 md:m-8 rounded-lg sm:rounded-xl ${
+          activePanel === "how" 
+            ? "h-[90vh] sm:h-[95vh] max-h-[90vh] sm:max-h-[95vh]" 
+            : "max-h-[90vh] sm:max-h-[95vh]"
+        }`}>
+          <div className={`relative w-full h-full ${
+            activePanel === "how" 
+              ? "overflow-hidden" 
+              : "overflow-y-auto max-h-[calc(90vh-1rem)] sm:max-h-[calc(95vh-2rem)]"
+          }`}>
             {activePanel === "agencies" && <ModalAgencies />}
             {activePanel === "features" && <ModalFeatures />}
             {activePanel === "pricing" && <ModalPricing />}
-            {activePanel === "how" && <ModalFeatures />}
+            {activePanel === "how" && <ModalDemo />}
           </div>
         </DialogContent>
       </Dialog>

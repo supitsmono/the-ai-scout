@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HeroHeader } from "@/components/home/HeroHeader";
 import { ChevronRight } from "lucide-react";
-import HeroDashboard from "./HeroDashboard";
+import DashboardPreview from "./DashboardPreview";
 
 export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void }) {
     return (
@@ -30,7 +30,7 @@ export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void 
 
                     {/* Subheadline */}
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-300 mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-                        AI automatically sorts thousands of applications for you. 
+                        AI automatically sorts thousands of applications for you.
                         Find the best models instantly without hours of scrolling.
                     </p>
 
@@ -79,8 +79,8 @@ export default function HeroSection({ setPanel }: { setPanel?: (v: any) => void 
 
                             {/* The Actual Dashboard Component */}
                             <div className="relative aspect-video md:aspect-21/9 overflow-hidden">
-                                <div className="absolute inset-0 scale-[0.9] origin-top">
-                                    <HeroDashboard />
+                                <div className="absolute inset-0 scale-[0.85] origin-top">
+                                    <DashboardPreview />
                                 </div>
                                 <div className="absolute inset-0 bg-black/60 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }} />
                             </div>

@@ -5,6 +5,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, Tuple
 import time
+from app.config import settings
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -13,10 +14,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     Limits requests per IP address
     """
     
-    def __init__(self, app, calls: int = 10, period: int = 60):
+    def __init__(self, app, calls: int = None, period: int = None):
         super().__init__(app)
-        self.calls = calls  # Number of calls allowed
-        self.period = period  # Time period in seconds
+        self.calls = calls or settings.RATE_LIMIT_REQUESTS
+        self.period = period or settings.RATE_LIMIT_WINDOW
         self.clients: Dict[str, list] = defaultdict(list)
     
     async def dispatch(self, request: Request, call_next):

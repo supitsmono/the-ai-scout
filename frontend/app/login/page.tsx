@@ -5,23 +5,37 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Logo } from "@/components/logo";
-import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, Loader2, X } from "lucide-react";
+import { login } from "@/lib/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login: loginAuth } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
-    // TODO: call your Flask /api/login here later
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await loginAuth(email, password);
+      // Login successful, redirect to dashboard
       router.push("/dashboard");
-    }, 1000);
+    } catch (err: any) {
+      // Show specific error message for wrong credentials
+      const errorMessage = err.message || "Wrong email or password";
+      if (errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("wrong") || errorMessage.toLowerCase().includes("401")) {
+        setError("Wrong email or password");
+      } else {
+        setError(errorMessage);
+      }
+      setLoading(false);
+    }
   }
 
   return (
@@ -82,6 +96,20 @@ export default function LoginPage() {
 
               {/* Form */}
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 rounded-xl bg-red-500/10 border border-red-500/20"
+                  >
+                    <p className="text-sm text-red-400 flex items-center gap-2">
+                      <X className="w-4 h-4" />
+                      {error}
+                    </p>
+                  </motion.div>
+                )}
+
                 {/* Email Field */}
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
