@@ -7,12 +7,13 @@ import ModelProfilePanel from "../../chats/[chatId]/components/ModelProfilePanel
 import ChatInterface from "./ChatInterface";
 import DashboardHome from "./DashboardHome";
 import Analytics from "./Analytics";
+import Settings from "./Settings";
 import type { DashboardModel } from "../page";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function CenterPanel() {
-  const { viewMode, selectedModelId, activeChatId, setActiveChat, setViewMode, setSelectedModel, goBack } = useWorkspace();
+  const { viewMode, selectedModelId, activeChatId, setActiveChat, setViewMode, setSelectedModel, setViewModeAndChat, goBack } = useWorkspace();
   const [selectedModelData, setSelectedModelData] = useState<DashboardModel | null>(null);
 
   // Load selected model (applications/favorites)
@@ -23,13 +24,39 @@ export default function CenterPanel() {
           const res = await fetch(`${API_BASE}/models/${selectedModelId}`);
           if (res.ok) {
             const m = await res.json();
+            // Normalize photos and assign types
+            let photos = [];
+            if (m.photos && Array.isArray(m.photos) && m.photos.length > 0) {
+              photos = m.photos.map((p: any, idx: number) => {
+                if (typeof p === "string") {
+                  // Assign types to first 4 photos (required photos)
+                  const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                  return { url: p, type: requiredTypes[idx] || (idx === 4 ? "Hobby" : "") };
+                }
+                // If photo object exists but no type, assign based on index
+                if (!p.type) {
+                  const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                  p.type = requiredTypes[idx] || (idx === 4 ? "Hobby" : "");
+                }
+                return p;
+              });
+            } else {
+              // Fallback photos if none exist
+              photos = [
+                { url: "https://images.pexels.com/photos/1921168/pexels-photo-1921168.jpeg", type: "Full Face" },
+                { url: "https://images.pexels.com/photos/1559086/pexels-photo-1559086.jpeg", type: "Full Body" },
+                { url: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg", type: "Side Profile" },
+                { url: "https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg", type: "Hips to Head" },
+              ];
+            }
+
             const model: DashboardModel = {
               id: m.id,
               name: m.name,
               age: m.age || 0,
               height: m.height_cm || m.height || 0,
               country: m.country || "Unknown",
-              photos: m.photos ? m.photos.map((p: any) => typeof p === 'string' ? { url: p } : p) : [{ url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Full Face" }],
+              photos: photos,
               measurements: { bust: 82, waist: 60, hips: 90 },
               motivation: m.motivation || "",
               status: (m.status || m.ai_category || "active") as any,
@@ -66,6 +93,11 @@ export default function CenterPanel() {
     return <Analytics />;
   }
 
+  // Settings View
+  if (viewMode === "settings") {
+    return <Settings />;
+  }
+
   // Applications or Favorites view - show empty state or model detail as slide-over
   if (viewMode === "applications" || viewMode === "favorites") {
     return (
@@ -88,10 +120,8 @@ export default function CenterPanel() {
               onClose={goBack}
               onContact={async (modelId, chatId) => {
                 if (chatId) {
-                  // Model is now contacted - switch to chats view
-                  setActiveChat(chatId);
-                  setViewMode("chats");
-                  setSelectedModel(null);
+                  // Model is now contacted - switch to chats view and open the chat
+                  setViewModeAndChat("chats", chatId);
                 }
               }}
               onDelete={() => {

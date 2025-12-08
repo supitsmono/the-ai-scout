@@ -68,6 +68,10 @@ def get_all_models(
     ai_category: Optional[str] = None,
     status: Optional[str] = None,
     country: Optional[str] = None,
+    age_min: Optional[int] = None,
+    age_max: Optional[int] = None,
+    height_min: Optional[int] = None,
+    height_max: Optional[int] = None,
     exclude_contacted: bool = True,
     sort_by: Optional[str] = "id",
     sort_order: Optional[str] = "desc"
@@ -107,6 +111,18 @@ def get_all_models(
     
     if country:
         query = query.filter(Model.country.ilike(f"%{country}%"))
+    
+    # Age range filtering
+    if age_min is not None:
+        query = query.filter(Model.age >= age_min)
+    if age_max is not None:
+        query = query.filter(Model.age <= age_max)
+    
+    # Height range filtering
+    if height_min is not None:
+        query = query.filter(Model.height_cm >= height_min)
+    if height_max is not None:
+        query = query.filter(Model.height_cm <= height_max)
     
     # Get total count before pagination
     total_count = query.count()

@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 import type { DashboardModel } from "../page";
 import { CheckSquare, Square, Trash2, Heart, Download, MoreHorizontal, Filter, Layers, Sparkles, MessageSquare, Users, Star, TrendingUp, AlertCircle } from "lucide-react";
+import ModelCard from "./ModelCard";
+import ModelFilter from "./ModelFilter";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -24,6 +27,22 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
   // Selection State
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+
+  // Filter State
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<{
+    ageMin: number | null;
+    ageMax: number | null;
+    heightMin: number | null;
+    heightMax: number | null;
+    country: string | null;
+  }>({
+    ageMin: null,
+    ageMax: null,
+    heightMin: null,
+    heightMax: null,
+    country: null,
+  });
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +65,7 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
     }
   };
 
-  // Load chats (unchanged logic for now, but kept clean)
+  // Load chats with photo normalization
   useEffect(() => {
     if (viewMode === "chats") {
       let timeoutId: NodeJS.Timeout;
@@ -62,7 +81,28 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
           });
           if (res.ok) {
             const data = await res.json();
-            setChats(Array.isArray(data) ? data : []);
+            // Normalize photos for each chat's model
+            const normalizedChats = (Array.isArray(data) ? data : []).map((chat: any) => {
+              if (chat.model?.photos && Array.isArray(chat.model.photos) && chat.model.photos.length > 0) {
+                chat.model.photos = chat.model.photos.map((p: any, idx: number) => {
+                  if (typeof p === "string") {
+                    // Assign types to first 4 photos (required photos)
+                    const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                    return { url: p, type: requiredTypes[idx] || (idx === 4 ? "Hobby" : "") };
+                  }
+                  // If photo object exists but no type, assign based on index
+                  const photoObj = p || {};
+                  if (!photoObj.type) {
+                    const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                    photoObj.type = requiredTypes[idx] || (idx === 4 ? "Hobby" : "");
+                  }
+                  // Ensure url exists
+                  return { url: photoObj.url || "", type: photoObj.type || "" };
+                }).filter((p: any) => p.url); // Filter out invalid photos
+              }
+              return chat;
+            });
+            setChats(normalizedChats);
           } else {
             console.warn("Failed to load chats:", res.status);
             setChats([]);
@@ -98,11 +138,12 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
       setHasMore(true);
       setLoading(true);
     }
-  }, [viewMode, selectedTab, searchQuery]);
+  }, [viewMode, selectedTab, searchQuery, filters]);
 
   const loadModels = useCallback(async (pageNum: number) => {
     if (!hasMore && pageNum > 1) return;
 
+    setLoading(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -114,7 +155,7 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
 
       const params = new URLSearchParams({
         page: pageNum.toString(),
-        limit: "20", // Smaller batches for infinite scroll
+        limit: "30", // Increased batch size for better performance with 1000+ items
         sort_by: "id",
         sort_order: "desc",
       });
@@ -126,6 +167,13 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
         params.set("ai_category", aiCategory);
       }
 
+      // Apply filters
+      if (filters.ageMin !== null) params.set("age_min", filters.ageMin.toString());
+      if (filters.ageMax !== null) params.set("age_max", filters.ageMax.toString());
+      if (filters.heightMin !== null) params.set("height_min", filters.heightMin.toString());
+      if (filters.heightMax !== null) params.set("height_max", filters.heightMax.toString());
+      if (filters.country !== null) params.set("country", filters.country);
+
       const res = await fetch(`${API_BASE}/models?${params.toString()}`, {
         signal: controller.signal
       });
@@ -134,25 +182,33 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
 
         // Transform
         const transformedModels: DashboardModel[] = (data.models || []).map((m: any) => {
-          // Robust Photo Generation logic - Add more photos for testing
+          // Normalize photos and assign types
           let photos = [];
           if (m.photos && Array.isArray(m.photos) && m.photos.length > 0) {
-            photos = m.photos.map((p: any) => typeof p === "string" ? { url: p, type: "Main" } : p);
+            photos = m.photos.map((p: any, idx: number) => {
+              if (typeof p === "string") {
+                // Assign types to first 4 photos (required photos)
+                const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                return { url: p, type: requiredTypes[idx] || (idx === 4 ? "Hobby" : "") };
+              }
+              // If photo object exists but no type, assign based on index
+              if (!p.type) {
+                const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                p.type = requiredTypes[idx] || (idx === 4 ? "Hobby" : "");
+              }
+              return p;
+            });
           } else {
             // High-Quality Agency Mock Photos - Extended portfolio for testing
             photos = [
-              { url: "https://images.pexels.com/photos/1921168/pexels-photo-1921168.jpeg", type: "Portfolio Headshot" },
+              { url: "https://images.pexels.com/photos/1921168/pexels-photo-1921168.jpeg", type: "Full Face" },
               { url: "https://images.pexels.com/photos/1559086/pexels-photo-1559086.jpeg", type: "Full Body" },
-              { url: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg", type: "Polaroid (Natural)" },
-              { url: "https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg", type: "Side Profile" },
-              { url: "https://images.pexels.com/photos/1542085/pexels-photo-1542085.jpeg", type: "Studio Portrait" },
+              { url: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg", type: "Side Profile" },
+              { url: "https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg", type: "Hips to Head" },
+              { url: "https://images.pexels.com/photos/1542085/pexels-photo-1542085.jpeg", type: "Hobby" },
               { url: "https://images.pexels.com/photos/2709563/pexels-photo-2709563.jpeg", type: "Editorial" },
               { url: "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg", type: "Commercial" },
               { url: "https://images.pexels.com/photos/2836486/pexels-photo-2836486.jpeg", type: "Fashion" },
-              { url: "https://images.pexels.com/photos/3228949/pexels-photo-3228949.jpeg", type: "Close-up" },
-              { url: "https://images.pexels.com/photos/3792581/pexels-photo-3792581.jpeg", type: "Full Body Studio" },
-              { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Natural Light" },
-              { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Outdoor" },
             ];
           }
 
@@ -171,7 +227,7 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
           };
         });
 
-        if (transformedModels.length < 20) {
+        if (transformedModels.length < 30) {
           setHasMore(false);
         }
 
@@ -193,24 +249,59 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
       clearTimeout(timeoutId);
       setLoading(false);
     }
-  }, [viewMode, selectedTab, searchQuery, hasMore]);
+  }, [viewMode, selectedTab, searchQuery, filters, hasMore]);
 
   // Trigger load on page change
   useEffect(() => {
-    if (viewMode === "applications" || viewMode === "favorites") {
+    if ((viewMode === "applications" || viewMode === "favorites") && page === 1) {
+      loadModels(1);
+    }
+  }, [viewMode, selectedTab, searchQuery]);
+
+  // Load more when page changes (for infinite scroll)
+  useEffect(() => {
+    if ((viewMode === "applications" || viewMode === "favorites") && page > 1) {
       loadModels(page);
     }
-  }, [page, loadModels, viewMode]);
+  }, [page]);
 
-  // Infinite Scroll Handler
-  const handleScroll = () => {
-    if (scrollContainerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
-      if (scrollHeight - scrollTop <= clientHeight + 100 && !loading && hasMore) {
-        setPage(prev => prev + 1);
-      }
+  // Infinite Scroll Handler - Debounced for performance
+  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const isLoadingMoreRef = useRef(false);
+  
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    // Prevent scroll propagation to parent
+    e.stopPropagation();
+    
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
     }
-  };
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (container && !loading && hasMore && !isLoadingMoreRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // Load more when 300px from bottom (smoother trigger)
+        if (distanceFromBottom < 300 && distanceFromBottom > 0) {
+          isLoadingMoreRef.current = true;
+          setPage(prev => {
+            // Prevent duplicate loads
+            if (prev < 1000) { // Safety limit
+              return prev + 1;
+            }
+            return prev;
+          });
+          
+          // Reset loading flag after a delay
+          setTimeout(() => {
+            isLoadingMoreRef.current = false;
+          }, 500);
+        }
+      }
+    }, 150);
+  }, [loading, hasMore]);
 
   // Chats filtering
   const filteredChats = chats.filter((chat: any) => {
@@ -230,7 +321,24 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
           </h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          style={{ 
+            overscrollBehavior: 'contain',
+            overscrollBehaviorY: 'contain',
+            overscrollBehaviorX: 'none',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y'
+          }}
+          onWheel={(e) => {
+            e.stopPropagation();
+          }}
+          onTouchMove={(e) => {
+            e.stopPropagation();
+          }}
+        >
           {loading ? (
             // Skeleton
             [1, 2, 3, 4].map(i => (
@@ -248,10 +356,37 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
               const unreadCount = chat.unread_count || 0;
               const hasUnread = unreadCount > 0;
               
-              // Get avatar photo
-              const avatarPhoto = chat.model?.photos?.[0]?.url || 
-                (typeof chat.model?.photos?.[0] === 'string' ? chat.model.photos[0] : null) ||
-                "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+              // Find "Full Face" photo for profile, otherwise use first photo
+              const findProfilePhoto = () => {
+                if (!chat.model?.photos || !Array.isArray(chat.model.photos) || chat.model.photos.length === 0) {
+                  return "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+                }
+                
+                // Look for Full Face photo first (check both normalized and raw photos)
+                const fullFacePhoto = chat.model.photos.find((p: any) => {
+                  const photo = typeof p === 'string' ? { url: p, type: '' } : p;
+                  const type = (photo.type || '').toLowerCase();
+                  // Match various forms of "Full Face" or "Headshot"
+                  return type === 'full face' || 
+                         type.includes('full face') || 
+                         type.includes('headshot') ||
+                         type === 'headshot full face' ||
+                         (photo.type === 'Full Face'); // Exact match for normalized
+                });
+                
+                if (fullFacePhoto) {
+                  return typeof fullFacePhoto === 'string' ? fullFacePhoto : (fullFacePhoto.url || fullFacePhoto);
+                }
+                
+                // If no Full Face found, use first photo (which should be Full Face if normalized correctly)
+                const firstPhoto = chat.model.photos[0];
+                if (typeof firstPhoto === 'string') {
+                  return firstPhoto;
+                }
+                return firstPhoto?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+              };
+              
+              const avatarPhoto = findProfilePhoto();
               
               // Get last message preview
               const lastMessage = chat.last_message || "No messages yet";
@@ -272,7 +407,7 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
                   }}
                   className={`group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all border
                       ${isActive
-                      ? "bg-purple-600/20 border-purple-500/50 shadow-lg shadow-purple-900/20"
+                      ? "bg-slate-800/60 border-slate-600/70 shadow-md"
                       : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
                     }`}
                 >
@@ -281,12 +416,12 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
                     <img
                       src={avatarPhoto}
                       className={`w-12 h-12 rounded-full object-cover border-2 ${
-                        isActive ? "border-purple-500/50" : "border-white/10"
+                        isActive ? "border-slate-500/60" : "border-white/10"
                       }`}
                       alt={chat.model?.name || "Avatar"}
                     />
                     <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 ${
-                      isActive ? "border-purple-600/20" : "border-[#0A0D14]"
+                      isActive ? "border-slate-800/60" : "border-[#0A0D14]"
                     } bg-emerald-500`} />
                   </div>
 
@@ -299,9 +434,27 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
                         {chat.model?.name || "Unknown"}
                       </h3>
                       {hasUnread && !isActive && (
-                        <div className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-purple-600 text-white text-[10px] font-bold">
+                        <div className="flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-cyan-600 text-white text-[10px] font-bold">
                           {unreadCount > 99 ? "99+" : unreadCount}
                         </div>
+                      )}
+                    </div>
+                    {/* Model Info - Age, Height, Country */}
+                    <div className="flex items-center gap-1.5 mb-1 text-[10px] text-gray-500">
+                      {chat.model?.age && (
+                        <>
+                          <span className="font-medium">{chat.model.age}y</span>
+                          <span className="w-0.5 h-0.5 bg-gray-600 rounded-full" />
+                        </>
+                      )}
+                      {chat.model?.height_cm && (
+                        <>
+                          <span>{chat.model.height_cm}cm</span>
+                          <span className="w-0.5 h-0.5 bg-gray-600 rounded-full" />
+                        </>
+                      )}
+                      {chat.model?.country && (
+                        <span className="truncate">{chat.model.country}</span>
                       )}
                     </div>
                     <p className={`text-xs truncate ${
@@ -328,51 +481,81 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#0B0F19]/60 backdrop-blur-xl relative">
+    <div className="flex flex-col h-full bg-[#0B0F19]/60 backdrop-blur-xl relative overflow-hidden">
       {/* Header with Tabs & Selection Toggle */}
       <div className="flex-none p-4 border-b border-slate-700/50 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-bold text-white">
             {viewMode === "favorites" ? "My Favorites" : "Applications"}
           </h2>
-          <button
-            onClick={() => {
-              setSelectionMode(!selectionMode);
-              setSelectedItems(new Set());
-            }}
-            className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${selectionMode ? "bg-purple-600 text-white border-purple-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"}`}
-          >
-            {selectionMode ? "Cancel" : "Select"}
-          </button>
+          <div className="flex items-center gap-2">
+            {viewMode === "applications" && (
+              <button
+                onClick={() => setFilterOpen(true)}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
+                  (filters.ageMin !== null || filters.ageMax !== null || 
+                   filters.heightMin !== null || filters.heightMax !== null || 
+                   filters.country !== null)
+                    ? "bg-cyan-600 text-white border-cyan-500"
+                    : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
+                }`}
+              >
+                <Filter size={12} />
+                Filter
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setSelectionMode(!selectionMode);
+                setSelectedItems(new Set());
+              }}
+              className={`text-xs px-2.5 py-1.5 rounded-lg border transition-all ${selectionMode ? "bg-purple-600 text-white border-purple-500" : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"}`}
+            >
+              {selectionMode ? "Cancel" : "Select"}
+            </button>
+          </div>
         </div>
 
         {/* Tabs - Only show for applications view */}
         {viewMode === "applications" && (
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none flex-nowrap">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (selectedTab !== tab.key) {
-                    setSelectedTab(tab.key);
-                  }
-                }}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border shrink-0 ${selectedTab === tab.key
-                  ? tab.key === "perfectFit" 
-                    ? "bg-emerald-500 text-white border-emerald-400 shadow-lg shadow-emerald-900/30"
-                    : tab.key === "goodFit"
-                    ? "bg-cyan-500 text-white border-cyan-400 shadow-lg shadow-cyan-900/30"
-                    : tab.key === "lowPotential"
-                    ? "bg-slate-600 text-white border-slate-500 shadow-lg shadow-slate-900/30"
-                    : "bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-900/30"
-                  : "bg-slate-900/50 text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-300 hover:bg-slate-800/50"
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-nowrap">
+            {tabs.map((tab) => {
+              const isActive = selectedTab === tab.key;
+              return (
+                <motion.button
+                  key={tab.key}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (selectedTab !== tab.key) {
+                      setSelectedTab(tab.key);
+                    }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`px-4 py-2 rounded-full text-[10px] font-bold whitespace-nowrap transition-all border shrink-0 relative overflow-hidden ${
+                    isActive
+                      ? tab.key === "perfectFit" 
+                        ? "bg-emerald-500 text-white border-emerald-400"
+                        : tab.key === "goodFit"
+                        ? "bg-cyan-500 text-white border-cyan-400"
+                        : tab.key === "lowPotential"
+                        ? "bg-slate-600 text-white border-slate-500"
+                        : "bg-slate-700 text-white border-slate-600"
+                      : "bg-slate-900/50 text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-300 hover:bg-slate-800/50"
                   }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-white/10 rounded-full"
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab.label}</span>
+                </motion.button>
+              );
+            })}
           </div>
         )}
 
@@ -380,10 +563,10 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
         {selectionMode && (
           <div className="flex items-center gap-2 px-1">
             <button onClick={selectAll} className="flex items-center gap-2 text-xs text-slate-300 hover:text-white transition-colors">
-              {selectedItems.size === models.length && models.length > 0 ? <CheckSquare size={14} className="text-purple-400" /> : <Square size={14} />}
+              {selectedItems.size === models.length && models.length > 0 ? <CheckSquare size={14} className="text-cyan-400" /> : <Square size={14} />}
               Select All Loaded
             </button>
-            <div className="ml-auto text-xs text-purple-400 font-bold">
+            <div className="ml-auto text-xs text-cyan-400 font-bold">
               {selectedItems.size} selected
             </div>
           </div>
@@ -394,125 +577,155 @@ export default function LeftPanel({ onClose }: LeftPanelProps) {
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent pb-20"
+        onWheel={(e) => {
+          // Prevent scroll propagation to parent
+          e.stopPropagation();
+        }}
+        onTouchMove={(e) => {
+          // Prevent touch scroll propagation
+          e.stopPropagation();
+        }}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-700/50 scrollbar-track-transparent hover:scrollbar-thumb-slate-600/50 transition-colors pb-20"
+        style={{ 
+          overscrollBehavior: 'contain',
+          overscrollBehaviorY: 'contain',
+          overscrollBehaviorX: 'none',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y'
+        }}
       >
-        {models.length === 0 && !loading ? (
-          <div className="text-center py-12 text-slate-600 text-xs">No models found</div>
-        ) : (
-          models.map((model) => {
-            // Use first photo as profile photo, or fallback
-            const firstPhoto = model.photos?.[0];
-            const photoUrl = firstPhoto?.url || (typeof firstPhoto === 'string' ? firstPhoto : null) || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
-            const isSelected = selectedItems.has(model.id);
-            const isActive = selectedModelId === model.id && !selectionMode;
-
-            // Only show colors/score in specific tabs, not in "All"
-            const showColors = selectedTab !== "all";
-            const matchScore = model.aiCategory === "perfectFit" ? 98 : model.aiCategory === "goodFit" ? 85 : 60;
-            const scoreColor = matchScore > 90 ? "text-emerald-400" : matchScore > 75 ? "text-amber-400" : "text-slate-400";
-            const ringColor = showColors ? (matchScore > 90 ? "border-emerald-500/50" : matchScore > 75 ? "border-amber-500/50" : "border-slate-600/50") : "border-slate-700/30";
-            const scoreBg = matchScore > 90 ? "bg-emerald-500/10 border-emerald-500/30" : matchScore > 75 ? "bg-amber-500/10 border-amber-500/30" : "bg-slate-500/10 border-slate-500/30";
-
-            return (
-              <div
+        <AnimatePresence mode="popLayout">
+          {models.length === 0 && !loading ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12 text-slate-600 text-xs"
+            >
+              No models found
+            </motion.div>
+          ) : (
+            models.map((model, index) => (
+              <ModelCard
                 key={model.id}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (selectionMode) {
-                    toggleSelection(model.id);
-                  } else {
-                    if (selectedModelId !== model.id) {
-                      setSelectedModel(model.id);
-                      onClose?.();
-                    }
+                model={model}
+                index={index}
+                isSelected={selectedItems.has(model.id)}
+                isActive={selectedModelId === model.id && !selectionMode}
+                selectionMode={selectionMode}
+                selectedTab={selectedTab}
+                onSelect={() => toggleSelection(model.id)}
+                onClick={() => {
+                  if (!selectionMode && selectedModelId !== model.id) {
+                    setSelectedModel(model.id);
+                    onClose?.();
                   }
                 }}
-                className={`group relative flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-all duration-300 border
-                  ${selectionMode && isSelected
-                    ? "bg-purple-900/30 border-purple-500/60 shadow-[0_0_20px_rgba(168,85,247,0.25)]"
-                    : isActive
-                      ? "bg-[#1A1D21] border-purple-500/40 shadow-lg shadow-purple-900/10 scale-[1.02] ring-1 ring-purple-500/20"
-                      : "bg-[#0F1115] border-[#1F2937] hover:bg-[#1A1D21] hover:border-slate-600/60 hover:scale-[1.01] hover:shadow-md"
-                  }`}
-              >
-                {/* Selection Overlay/Checkbox */}
-                {selectionMode && (
-                  <div className="absolute top-3 right-3 z-10">
-                    {isSelected
-                      ? <CheckSquare size={16} className="text-purple-400 drop-shadow-md" />
-                      : <Square size={16} className="text-slate-700" />}
-                  </div>
-                )}
-
-                {/* Photo */}
-                <div className={`relative w-14 h-14 shrink-0 rounded-lg p-[2px] border-2 ${ringColor}`}>
-                  <div className="w-full h-full rounded-md overflow-hidden bg-slate-800 relative group-hover:brightness-110 transition-all">
-                    <img src={photoUrl} className="w-full h-full object-cover" />
-                  </div>
-                  {/* Score Badge - Only show in specific tabs, not in "All" */}
-                  {showColors && (
-                    <div className={`absolute -bottom-1 -right-1 ${scoreBg} text-[9px] font-bold px-1.5 py-0.5 rounded border backdrop-blur-sm ${scoreColor}`}>
-                      {matchScore}%
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <div className="flex justify-between items-start">
-                    <h3 className={`text-sm font-bold truncate transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"}`}>
-                      {model.name}
-                    </h3>
-                    {/* TOP badge - Only show in specific tabs, not in "All" */}
-                    {showColors && model.aiCategory === 'perfectFit' && !selectionMode && (
-                      <div className="flex items-center gap-0.5 text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40 shadow-sm shadow-emerald-900/20">
-                        <Sparkles size={8} /> TOP
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 mt-1 text-[11px] font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
-                    <span>{model.age}y</span>
-                    <span className="w-px h-px bg-slate-500 rounded-full" />
-                    <span>{model.height}cm</span>
-                    <span className="w-px h-px bg-slate-500 rounded-full" />
-                    <span className="truncate">{model.country}</span>
-                  </div>
-
-                  {/* Quick Stat Tag */}
-                  <div className="mt-2 flex">
-                    <span className="text-[10px] bg-white/5 text-slate-400 px-1.5 py-0.5 rounded border border-white/10 group-hover:border-white/20 group-hover:text-slate-300 transition-colors truncate max-w-[120px]">
-                      {model.motivation ? "Applied: " + model.motivation.substring(0, 15) + "..." : "New Applicant"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+              />
+            ))
+          )}
+        </AnimatePresence>
+        
+        {/* Loading indicator with better visual feedback */}
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="py-6 flex flex-col items-center gap-2"
+          >
+            <div className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-2 h-2 rounded-full bg-cyan-500"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    delay: i * 0.2,
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-slate-500">Loading more talent...</span>
+          </motion.div>
         )}
-        {loading && <div className="py-4 text-center text-[10px] text-slate-500 animate-pulse">Loading talent...</div>}
+        
+        {/* End of list indicator */}
+        {!hasMore && models.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="py-4 text-center text-[10px] text-slate-600"
+          >
+            All {models.length} models loaded
+          </motion.div>
+        )}
       </div>
 
-      {/* Floating Bulk Action Bar */}
-      {selectionMode && selectedItems.size > 0 && (
-        <div className="absolute bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur-sm border border-slate-700/50 rounded-xl shadow-2xl p-2 flex justify-between items-center z-20 animate-in slide-in-from-bottom-5 fade-in duration-200">
-          <div className="flex gap-1">
-            <button className="p-2 hover:bg-slate-800/80 rounded-lg text-slate-400 hover:text-emerald-400 transition-colors" title="Mark Good Fit">
-              <Heart size={16} />
-            </button>
-            <button className="p-2 hover:bg-slate-800/80 rounded-lg text-slate-400 hover:text-red-400 transition-colors" title="Archive">
-              <Trash2 size={16} />
-            </button>
-            <button className="p-2 hover:bg-slate-800/80 rounded-lg text-slate-400 hover:text-blue-400 transition-colors" title="Export CSV">
-              <Download size={16} />
-            </button>
-          </div>
-          <div className="h-4 w-px bg-slate-700/50 mx-1" />
-          <button className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-colors shadow-lg shadow-purple-900/30">
-            Action
-          </button>
-        </div>
+      {/* Floating Bulk Action Bar - Enhanced */}
+      <AnimatePresence>
+        {selectionMode && selectedItems.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute bottom-4 left-4 right-4 bg-slate-900/98 backdrop-blur-md border border-slate-700/50 rounded-xl shadow-2xl p-3 flex justify-between items-center z-20"
+          >
+            <div className="flex gap-1.5">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-2.5 hover:bg-emerald-500/20 rounded-lg text-slate-400 hover:text-emerald-400 transition-colors border border-transparent hover:border-emerald-500/30"
+                title="Mark as Favorite"
+              >
+                <Heart size={16} />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-2.5 hover:bg-red-500/20 rounded-lg text-slate-400 hover:text-red-400 transition-colors border border-transparent hover:border-red-500/30"
+                title="Archive Selected"
+              >
+                <Trash2 size={16} />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-2.5 hover:bg-cyan-500/20 rounded-lg text-slate-400 hover:text-cyan-400 transition-colors border border-transparent hover:border-cyan-500/30"
+                title="Export CSV"
+              >
+                <Download size={16} />
+              </motion.button>
+            </div>
+            <div className="h-6 w-px bg-slate-700/50 mx-2" />
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-400 font-medium">
+                <span className="text-cyan-400 font-bold">{selectedItems.size}</span> selected
+              </span>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-4 py-2 bg-cyan-600 text-white text-xs font-bold rounded-lg hover:bg-cyan-500 transition-all border border-cyan-500/30"
+              >
+                Apply Action
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Filter Panel */}
+      {viewMode === "applications" && (
+        <ModelFilter
+          open={filterOpen}
+          onOpenChange={setFilterOpen}
+          filters={filters}
+          onFiltersChange={setFilters}
+        />
       )}
     </div>
   );

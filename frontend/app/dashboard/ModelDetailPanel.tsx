@@ -43,31 +43,44 @@ export default function ModelDetailPanel({
 }: Props) {
   if (!model) return null;
 
-  // Normalize photos - Add more photos if needed for testing
-  let photos: PhotoObj[] =
-    model.photos?.map((p: any) =>
-      typeof p === "string" ? { url: p, type: "" } : p
-    ) ?? [];
-
+  // Normalize photos and assign types - ensure all photos are shown
+  let photos: PhotoObj[] = [];
+  if (model.photos && Array.isArray(model.photos) && model.photos.length > 0) {
+    photos = model.photos.map((p: any, idx: number) => {
+      // Handle string photos
+      if (typeof p === "string") {
+        const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+        return { url: p, type: requiredTypes[idx] || (idx === 4 ? "Hobby" : `Photo ${idx + 1}`) };
+      }
+      // Handle photo objects
+      const photoObj = p || {};
+      // If no type assigned, assign based on index
+      if (!photoObj.type) {
+        const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+        photoObj.type = requiredTypes[idx] || (idx === 4 ? "Hobby" : `Photo ${idx + 1}`);
+      }
+      // Ensure url exists
+      return { url: photoObj.url || "", type: photoObj.type || `Photo ${idx + 1}` };
+    }).filter((p: PhotoObj) => p.url); // Filter out any photos without URLs
+  }
+  
+  // If no photos or all were filtered out, use fallback
   if (photos.length === 0) {
     photos = [
-      { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Portrait" },
+      { url: "https://images.pexels.com/photos/1921168/pexels-photo-1921168.jpeg", type: "Full Face" },
+      { url: "https://images.pexels.com/photos/1559086/pexels-photo-1559086.jpeg", type: "Full Body" },
+      { url: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg", type: "Side Profile" },
+      { url: "https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg", type: "Hips to Head" },
     ];
-  } else if (photos.length < 8) {
-    // Add more photos for testing if portfolio is small
-    const additionalPhotos = [
-      { url: "https://images.pexels.com/photos/1542085/pexels-photo-1542085.jpeg", type: "Studio Portrait" },
-      { url: "https://images.pexels.com/photos/2709563/pexels-photo-2709563.jpeg", type: "Editorial" },
-      { url: "https://images.pexels.com/photos/1926769/pexels-photo-1926769.jpeg", type: "Commercial" },
-      { url: "https://images.pexels.com/photos/2836486/pexels-photo-2836486.jpeg", type: "Fashion" },
-      { url: "https://images.pexels.com/photos/3228949/pexels-photo-3228949.jpeg", type: "Close-up" },
-      { url: "https://images.pexels.com/photos/3792581/pexels-photo-3792581.jpeg", type: "Full Body Studio" },
-      { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Natural Light" },
-      { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Outdoor" },
-    ];
-    const existingUrls = new Set(photos.map(p => p.url));
-    photos = [...photos, ...additionalPhotos.filter(p => !existingUrls.has(p.url))];
   }
+
+  // Separate required photos (first 4) and optional photos
+  const requiredPhotos = photos.slice(0, 4);
+  const hobbyPhoto = photos[4] || null;
+  const additionalPhotos = photos.slice(5);
+  
+  // All photos for lightbox navigation
+  const allPhotos = photos;
 
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [isContacting, setIsContacting] = useState(false);
@@ -183,9 +196,9 @@ export default function ModelDetailPanel({
   const navigatePhoto = (direction: "prev" | "next") => {
     if (selectedPhotoIndex === null) return;
     if (direction === "prev") {
-      setSelectedPhotoIndex(selectedPhotoIndex > 0 ? selectedPhotoIndex - 1 : photos.length - 1);
+      setSelectedPhotoIndex(selectedPhotoIndex > 0 ? selectedPhotoIndex - 1 : allPhotos.length - 1);
     } else {
-      setSelectedPhotoIndex(selectedPhotoIndex < photos.length - 1 ? selectedPhotoIndex + 1 : 0);
+      setSelectedPhotoIndex(selectedPhotoIndex < allPhotos.length - 1 ? selectedPhotoIndex + 1 : 0);
     }
   };
 
@@ -204,7 +217,7 @@ export default function ModelDetailPanel({
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
               <img 
-                src={photos[0]?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg"} 
+                src={requiredPhotos[0]?.url || photos[0]?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg"} 
                 alt={model.name}
                 className="w-full h-full object-cover"
               />
@@ -234,28 +247,110 @@ export default function ModelDetailPanel({
       <div className="flex-1 overflow-hidden">
         <div className="h-full max-w-6xl mx-auto p-4 space-y-4 flex flex-col">
           
-          {/* PHOTO GALLERY - Compact Grid */}
-          <div className="shrink-0">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-              <User size={12} />
-              Portfolio ({photos.length} photos)
-            </h3>
-            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-              {photos.slice(0, 16).map((photo, i) => (
+          {/* REQUIRED PHOTOS - 4 Main Photos */}
+          {requiredPhotos.length > 0 && (
+            <div className="shrink-0">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <User size={12} />
+                Required Photos {requiredPhotos.length < 4 && `(${requiredPhotos.length} of 4)`}
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                {requiredPhotos.map((photo, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedPhotoIndex(i)}
+                    className="aspect-3/4 rounded-lg overflow-hidden border-2 border-purple-500/30 hover:border-purple-500/60 transition-all group relative bg-[#111]"
+                  >
+                    <img 
+                      src={photo.url} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                      alt={`${model.name} - ${photo.type}`}
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                        <p className="text-xs text-white font-semibold">{photo.type}</p>
+                      </div>
+                    </div>
+                    {/* Label always visible at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 backdrop-blur-sm">
+                      <p className="text-[10px] text-white font-medium text-center">{photo.type}</p>
+                    </div>
+                  </button>
+                ))}
+                {/* Show placeholder slots for missing required photos */}
+                {requiredPhotos.length < 4 && Array.from({ length: 4 - requiredPhotos.length }).map((_, i) => (
+                  <div
+                    key={`placeholder-${i}`}
+                    className="aspect-3/4 rounded-lg overflow-hidden border-2 border-dashed border-slate-700/50 bg-slate-900/30 flex items-center justify-center"
+                  >
+                    <div className="text-center p-4">
+                      <p className="text-[10px] text-slate-500 font-medium">Missing Photo</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* HOBBY PHOTO - Optional */}
+          {hobbyPhoto && (
+            <div className="shrink-0 mb-4">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Hobby Photo (Optional)
+              </h3>
+              <div className="max-w-xs">
                 <button
-                  key={i}
-                  onClick={() => setSelectedPhotoIndex(i)}
-                  className="aspect-3/4 rounded-md overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all group relative bg-[#111]"
+                  onClick={() => setSelectedPhotoIndex(4)}
+                  className="w-full aspect-3/4 rounded-lg overflow-hidden border-2 border-cyan-500/30 hover:border-cyan-500/60 transition-all group relative bg-[#111]"
                 >
                   <img 
-                    src={photo.url} 
+                    src={hobbyPhoto.url} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
-                    alt={`${model.name} - ${photo.type || `Photo ${i + 1}`}`}
+                    alt={`${model.name} - ${hobbyPhoto.type}`}
                   />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                      <p className="text-xs text-white font-semibold">{hobbyPhoto.type}</p>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 backdrop-blur-sm">
+                    <p className="text-[10px] text-white font-medium text-center">{hobbyPhoto.type}</p>
+                  </div>
                 </button>
-              ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ADDITIONAL PHOTOS - If any */}
+          {additionalPhotos.length > 0 && (
+            <div className="shrink-0">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                Additional Photos ({additionalPhotos.length})
+              </h3>
+              <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                {additionalPhotos.map((photo, i) => (
+                  <button
+                    key={i + 5}
+                    onClick={() => setSelectedPhotoIndex(i + 5)}
+                    className="aspect-3/4 rounded-md overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all group relative bg-[#111]"
+                  >
+                    <img 
+                      src={photo.url} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                      alt={`${model.name} - ${photo.type || `Photo ${i + 6}`}`}
+                    />
+                    {photo.type && (
+                      <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-0 left-0 right-0 p-1.5">
+                          <p className="text-[9px] text-white font-medium truncate">{photo.type}</p>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* INFO SECTIONS - Compact */}
           <div className="grid grid-cols-2 gap-3 shrink-0">
@@ -412,8 +507,8 @@ export default function ModelDetailPanel({
             onClick={(e) => e.stopPropagation()}
           >
             <img
-              src={photos[selectedPhotoIndex].url}
-              alt={`${model.name} - ${photos[selectedPhotoIndex].type || `Photo ${selectedPhotoIndex + 1}`}`}
+              src={allPhotos[selectedPhotoIndex].url}
+              alt={`${model.name} - ${allPhotos[selectedPhotoIndex].type || `Photo ${selectedPhotoIndex + 1}`}`}
               className="max-w-full max-h-full object-contain"
               style={{ maxWidth: 'calc(100vw - 200px)', maxHeight: 'calc(100vh - 160px)' }}
             />
@@ -422,9 +517,9 @@ export default function ModelDetailPanel({
           {/* Bottom Info Bar */}
           <div className="absolute bottom-0 left-0 right-0 z-10 flex items-center justify-center p-4 bg-linear-to-t from-black/90 to-transparent">
             <div className="bg-black/60 backdrop-blur-sm px-6 py-3 rounded-lg text-sm text-white">
-              <span className="font-medium">{selectedPhotoIndex + 1} / {photos.length}</span>
-              {photos[selectedPhotoIndex].type && (
-                <span className="ml-3 text-gray-300">• {photos[selectedPhotoIndex].type}</span>
+              <span className="font-medium">{selectedPhotoIndex + 1} / {allPhotos.length}</span>
+              {allPhotos[selectedPhotoIndex].type && (
+                <span className="ml-3 text-gray-300">• {allPhotos[selectedPhotoIndex].type}</span>
               )}
             </div>
           </div>

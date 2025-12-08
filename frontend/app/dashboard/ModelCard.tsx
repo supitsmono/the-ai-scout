@@ -4,15 +4,6 @@ import React from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { Sparkles } from "lucide-react";
 
-const countryFlags: Record<string, string> = {
-  Netherlands: "🇳🇱",
-  China: "🇨🇳",
-  Italy: "🇮🇹",
-  France: "🇫🇷",
-  Spain: "🇪🇸",
-  Germany: "🇩🇪",
-  USA: "🇺🇸",
-};
 
 export default function ModelCard({ model, onClick }: { model: any, onClick: () => void }) {
   return (
@@ -53,8 +44,8 @@ export default function ModelCard({ model, onClick }: { model: any, onClick: () 
           <div className="text-white font-bold text-xl group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-linear-to-r group-hover:from-white group-hover:to-slate-300 transition-all">
             {model.name}
           </div>
-          <div className="text-2xl opacity-80 group-hover:opacity-100 transition-opacity transform group-hover:scale-110 duration-200">
-            {countryFlags[model.country] || "🌍"}
+          <div className="text-xs text-slate-400 opacity-80 group-hover:opacity-100 transition-opacity">
+            {model.country}
           </div>
         </div>
 

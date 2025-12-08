@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.model import Model
 from app.schemas.model import (
     ModelCreate,
     ModelResponse,
@@ -23,6 +24,10 @@ def list_models(
     ai_category: Optional[str] = Query(None, description="Filter by AI category"),
     status: Optional[str] = Query(None, description="Filter by status"),
     country: Optional[str] = Query(None, description="Filter by country"),
+    age_min: Optional[int] = Query(None, ge=0, description="Minimum age"),
+    age_max: Optional[int] = Query(None, ge=0, description="Maximum age"),
+    height_min: Optional[int] = Query(None, ge=0, description="Minimum height (cm)"),
+    height_max: Optional[int] = Query(None, ge=0, description="Maximum height (cm)"),
     exclude_contacted: bool = Query(True, description="Exclude contacted models (default: True)"),
     sort_by: str = Query("id", description="Sort field (id, name, country, age)"),
     sort_order: str = Query("desc", description="Sort order (asc, desc)"),
@@ -41,6 +46,10 @@ def list_models(
         ai_category=ai_category,
         status=status,
         country=country,
+        age_min=age_min,
+        age_max=age_max,
+        height_min=height_min,
+        height_max=height_max,
         exclude_contacted=exclude_contacted,
         sort_by=sort_by,
         sort_order=sort_order,
@@ -107,5 +116,13 @@ def delete_model(
         "message": "Model deleted permanently",
         "model_id": model_id
     }
+
+@router.get("/countries/list")
+def get_countries_list(db: Session = Depends(get_db)):
+    """Get list of unique countries from models"""
+    from sqlalchemy import distinct
+    countries = db.query(distinct(Model.country)).filter(Model.country.isnot(None)).order_by(Model.country).all()
+    return {"countries": [c[0] for c in countries if c[0]]}
+
 
 # Note: Contact endpoint is in status.py to avoid route conflicts

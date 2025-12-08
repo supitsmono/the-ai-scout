@@ -18,28 +18,20 @@ def get_analytics_overview(db: Session = Depends(get_db)):
     total_chats = db.query(Chat).count()
     active_chats = db.query(Chat).filter(Chat.is_open == True).count()
     
-    # AI Classification breakdown
+    # AI Classification breakdown (only categories used in dashboard tabs)
+    valid_categories = ["perfectFit", "goodFit", "lowPotential"]
     ai_breakdown = db.query(
         Model.ai_category,
         func.count(Model.id).label('count')
-    ).group_by(Model.ai_category).all()
+    ).filter(Model.ai_category.in_(valid_categories)).group_by(Model.ai_category).all()
     
-    ai_stats = {category or "unclassified": count for category, count in ai_breakdown}
-    
-    # Pipeline stage breakdown
-    pipeline_breakdown = db.query(
-        Model.pipeline_stage,
-        func.count(Model.id).label('count')
-    ).group_by(Model.pipeline_stage).all()
-    
-    pipeline_stats = {stage or "applied": count for stage, count in pipeline_breakdown}
+    ai_stats = {category: count for category, count in ai_breakdown}
     
     return {
         "total_models": total_models,
         "total_chats": total_chats,
         "active_chats": active_chats,
         "ai_classification": ai_stats,
-        "pipeline_stages": pipeline_stats,
     }
 
 
@@ -81,21 +73,28 @@ def get_age_distribution(db: Session = Depends(get_db)):
 
 @router.get("/ai-classification")
 def get_ai_classification_stats(db: Session = Depends(get_db)):
-    """Get detailed AI classification statistics"""
+    """Get detailed AI classification statistics - only shows categories used in dashboard"""
+    # Only get categories that exist in dashboard tabs
+    valid_categories = ["perfectFit", "goodFit", "lowPotential"]
+    
     classifications = db.query(
         Model.ai_category,
         func.count(Model.id).label('count')
-    ).group_by(Model.ai_category).all()
+    ).filter(Model.ai_category.in_(valid_categories)).group_by(Model.ai_category).all()
     
-    total_classified = sum(count for _, count in classifications if _ is not None)
+    total_classified = sum(count for _, count in classifications)
     total_models = db.query(Model).count()
+    
+    # Count unclassified models (null or not in valid categories)
+    unclassified_count = total_models - total_classified
     
     return {
         "breakdown": [
-            {"category": category or "unclassified", "count": count}
+            {"category": category, "count": count}
             for category, count in classifications
         ],
         "total_classified": total_classified,
+        "unclassified_count": unclassified_count,
         "total_models": total_models,
         "classification_rate": (total_classified / total_models * 100) if total_models > 0 else 0,
     }
@@ -103,37 +102,56 @@ def get_ai_classification_stats(db: Session = Depends(get_db)):
 
 @router.get("/pipeline-flow")
 def get_pipeline_flow(db: Session = Depends(get_db)):
-    """Get pipeline flow statistics"""
-    stages = [
-        "applied",
-        "reviewing",
-        "perfectFit",
-        "goodFit",
-        "interview",
-        "selected",
-        "rejected",
-    ]
+    """Get pipeline flow statistics - only shows AI classification categories used in dashboard"""
+    # Only show AI categories that are actually used in the dashboard tabs
+    # Dashboard uses: all, perfectFit, goodFit, lowPotential (no unclassified tab)
+    ai_categories = ["perfectFit", "goodFit", "lowPotential"]
     
     stats = {}
-    for stage in stages:
-        if stage == "applied":
-            count = db.query(Model).filter(
-                (Model.pipeline_stage == stage) | (Model.pipeline_stage == None)
-            ).count()
-        else:
-            count = db.query(Model).filter(Model.pipeline_stage == stage).count()
-        stats[stage] = count
+    total_models = db.query(Model).count()
     
-    # Calculate conversion rates
-    total_applied = stats.get("applied", 0)
-    conversion_rates = {}
-    if total_applied > 0:
-        conversion_rates["to_reviewing"] = (stats.get("reviewing", 0) / total_applied * 100)
-        conversion_rates["to_perfect_fit"] = (stats.get("perfectFit", 0) / total_applied * 100)
-        conversion_rates["to_selected"] = (stats.get("selected", 0) / total_applied * 100)
+    # Get counts for each AI category (only the ones that exist in dashboard tabs)
+    for category in ai_categories:
+        count = db.query(Model).filter(Model.ai_category == category).count()
+        stats[category] = count
+    
+    # Calculate percentages based on total models
+    percentages = {}
+    if total_models > 0:
+        for category, count in stats.items():
+            percentages[category] = (count / total_models * 100)
     
     return {
-        "stages": stats,
-        "conversion_rates": conversion_rates,
+        "categories": stats,
+        "percentages": percentages,
+        "total_models": total_models,
+    }
+
+
+@router.get("/engagement")
+def get_engagement_stats(db: Session = Depends(get_db)):
+    """Get engagement statistics - contact rate, active chats, etc."""
+    total_models = db.query(Model).count()
+    contacted_models = db.query(Model).filter(Model.status == "contacted").count()
+    total_chats = db.query(Chat).count()
+    active_chats = db.query(Chat).filter(Chat.is_open == True).count()
+    archived_chats = db.query(Chat).filter(Chat.is_archived == True).count()
+    
+    # Calculate contact rate
+    contact_rate = (contacted_models / total_models * 100) if total_models > 0 else 0
+    
+    # Get total messages count
+    from app.models.message import Message
+    total_messages = db.query(Message).count()
+    
+    return {
+        "total_models": total_models,
+        "contacted_models": contacted_models,
+        "contact_rate": contact_rate,
+        "total_chats": total_chats,
+        "active_chats": active_chats,
+        "archived_chats": archived_chats,
+        "total_messages": total_messages,
+        "avg_messages_per_chat": (total_messages / total_chats) if total_chats > 0 else 0,
     }
 

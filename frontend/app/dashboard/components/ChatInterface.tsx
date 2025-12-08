@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useWorkspace } from "../context/WorkspaceContext";
 import MessageBubble from "../../chats/[chatId]/components/MessageBubble";
 import ChatInput from "../../chats/[chatId]/components/ChatInput";
-import ModelProfilePanel from "../../chats/[chatId]/components/ModelProfilePanel";
+import ModelDetailPanel from "../ModelDetailPanel";
 import { ArrowLeft, User, Trash2, MoreVertical, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DashboardModel } from "../page";
@@ -79,25 +79,29 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
                         const modelRes = await fetch(`${API_BASE}/models/${data.model.id}`);
                         if (modelRes.ok) {
                             const m = await modelRes.json();
-                            // Normalize photos
+                            // Normalize photos and assign types (same as CenterPanel)
                             let photos = [];
                             if (m.photos && Array.isArray(m.photos) && m.photos.length > 0) {
                                 photos = m.photos.map((p: any, idx: number) => {
                                     if (typeof p === "string") {
-                                        const types = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
-                                        return { url: p, type: types[idx] || "Photo" };
+                                        // Assign types to first 4 photos (required photos)
+                                        const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                                        return { url: p, type: requiredTypes[idx] || (idx === 4 ? "Hobby" : "") };
                                     }
+                                    // If photo object exists but no type, assign based on index
                                     if (!p.type) {
-                                        const types = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
-                                        p.type = types[idx] || "Photo";
+                                        const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                                        p.type = requiredTypes[idx] || (idx === 4 ? "Hobby" : "");
                                     }
                                     return p;
                                 });
                             } else {
+                                // Fallback photos if none exist
                                 photos = [
-                                    { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Full Face" },
-                                    { url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg", type: "Side Profile" },
-                                    { url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg", type: "Full Body" },
+                                    { url: "https://images.pexels.com/photos/1921168/pexels-photo-1921168.jpeg", type: "Full Face" },
+                                    { url: "https://images.pexels.com/photos/1559086/pexels-photo-1559086.jpeg", type: "Full Body" },
+                                    { url: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg", type: "Side Profile" },
+                                    { url: "https://images.pexels.com/photos/2613260/pexels-photo-2613260.jpeg", type: "Hips to Head" },
                                 ];
                             }
                             
@@ -217,9 +221,56 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
         );
     }
 
-    const modelPhoto = chat?.model?.photos?.[0]?.url || 
-        (typeof chat?.model?.photos?.[0] === 'string' ? chat.model.photos[0] : null) ||
-        "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+    // Find "Full Face" photo for profile, otherwise use first photo
+    const findProfilePhoto = () => {
+        // First try modelData (normalized photos)
+        if (modelData?.photos && modelData.photos.length > 0) {
+            const fullFacePhoto = modelData.photos.find((p: any) => {
+                const type = p.type?.toLowerCase() || '';
+                return type.includes('full face') || type.includes('headshot') || type === 'full face';
+            });
+            
+            if (fullFacePhoto) {
+                return fullFacePhoto.url;
+            }
+            
+            // Fallback to first photo
+            return modelData.photos[0]?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+        }
+        
+        // Fallback to chat.model.photos if modelData not loaded yet
+        if (chat?.model?.photos && Array.isArray(chat.model.photos) && chat.model.photos.length > 0) {
+            // Normalize on the fly if needed
+            const photos = chat.model.photos.map((p: any, idx: number) => {
+                if (typeof p === "string") {
+                    const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                    return { url: p, type: requiredTypes[idx] || "" };
+                }
+                if (!p.type) {
+                    const requiredTypes = ["Full Face", "Full Body", "Side Profile", "Hips to Head"];
+                    p.type = requiredTypes[idx] || "";
+                }
+                return p;
+            });
+            
+            const fullFacePhoto = photos.find((p: any) => {
+                const type = p.type?.toLowerCase() || '';
+                return type.includes('full face') || type.includes('headshot') || type === 'full face';
+            });
+            
+            if (fullFacePhoto) {
+                return fullFacePhoto.url;
+            }
+            
+            // Fallback to first photo
+            const firstPhoto = photos[0];
+            return typeof firstPhoto === 'string' ? firstPhoto : (firstPhoto?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg");
+        }
+        
+        return "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
+    };
+    
+    const modelPhoto = findProfilePhoto();
 
     return (
         <div className="flex flex-col h-full relative bg-[#050505]">
@@ -396,12 +447,12 @@ export default function ChatInterface({ chatId, initialChatData }: ChatInterface
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {modelData ? (
-                                    <ModelProfilePanel
+                                    <ModelDetailPanel
                                         model={modelData}
                                         onClose={() => {
-                                            console.log("ModelProfilePanel onClose called");
                                             setShowRightPanel(false);
                                         }}
+                                        onDelete={handleDelete}
                                     />
                                 ) : (
                                     <div className="flex items-center justify-center h-full">

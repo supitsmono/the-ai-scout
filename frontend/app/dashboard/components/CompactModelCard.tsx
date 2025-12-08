@@ -3,15 +3,6 @@
 import React from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
 
-const countryFlags: Record<string, string> = {
-  Netherlands: "🇳🇱",
-  China: "🇨🇳",
-  Italy: "🇮🇹",
-  France: "🇫🇷",
-  Spain: "🇪🇸",
-  Germany: "🇩🇪",
-  USA: "🇺🇸",
-};
 
 export default function CompactModelCard({ model, onClick }: { model: any; onClick: () => void }) {
   return (
@@ -47,7 +38,7 @@ export default function CompactModelCard({ model, onClick }: { model: any; onCli
           <span>•</span>
           <span>{model.height} cm</span>
           <span>•</span>
-          <span>{countryFlags[model.country] || "🌍"}</span>
+          <span>{model.country}</span>
         </div>
       </div>
     </div>

@@ -21,7 +21,6 @@ interface OverviewData {
     total_chats: number;
     active_chats: number;
     ai_classification: Record<string, number>;
-    pipeline_stages: Record<string, number>;
 }
 
 interface CountryData {
@@ -39,13 +38,26 @@ interface AgeDistribution {
 interface AIClassification {
     breakdown: Array<{ category: string; count: number }>;
     total_classified: number;
+    unclassified_count: number;
     total_models: number;
     classification_rate: number;
 }
 
 interface PipelineFlow {
-    stages: Record<string, number>;
-    conversion_rates: Record<string, number>;
+    categories: Record<string, number>;
+    percentages: Record<string, number>;
+    total_models: number;
+}
+
+interface EngagementStats {
+    total_models: number;
+    contacted_models: number;
+    contact_rate: number;
+    total_chats: number;
+    active_chats: number;
+    archived_chats: number;
+    total_messages: number;
+    avg_messages_per_chat: number;
 }
 
 export default function Analytics() {
@@ -54,6 +66,7 @@ export default function Analytics() {
     const [ageDistribution, setAgeDistribution] = useState<AgeDistribution | null>(null);
     const [aiClassification, setAiClassification] = useState<AIClassification | null>(null);
     const [pipelineFlow, setPipelineFlow] = useState<PipelineFlow | null>(null);
+    const [engagement, setEngagement] = useState<EngagementStats | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -64,12 +77,13 @@ export default function Analytics() {
 
             try {
                 // Load all analytics data in parallel
-                const [overviewRes, countriesRes, ageRes, aiRes, pipelineRes] = await Promise.all([
+                const [overviewRes, countriesRes, ageRes, aiRes, pipelineRes, engagementRes] = await Promise.all([
                     fetch(`${API_BASE}/analytics/overview`, { signal: controller.signal }),
                     fetch(`${API_BASE}/analytics/countries`, { signal: controller.signal }),
                     fetch(`${API_BASE}/analytics/age-distribution`, { signal: controller.signal }),
                     fetch(`${API_BASE}/analytics/ai-classification`, { signal: controller.signal }),
                     fetch(`${API_BASE}/analytics/pipeline-flow`, { signal: controller.signal }),
+                    fetch(`${API_BASE}/analytics/engagement`, { signal: controller.signal }),
                 ]);
 
                 if (overviewRes.ok) {
@@ -87,6 +101,9 @@ export default function Analytics() {
                 }
                 if (pipelineRes.ok) {
                     setPipelineFlow(await pipelineRes.json());
+                }
+                if (engagementRes.ok) {
+                    setEngagement(await engagementRes.json());
                 }
             } catch (error: any) {
                 if (error.name !== 'AbortError') {
@@ -111,9 +128,6 @@ export default function Analytics() {
 
     const topCountries = countries.slice(0, 5);
     const maxCountryCount = topCountries[0]?.count || 1;
-
-    const pipelineStages = pipelineFlow?.stages || {};
-    const maxPipelineCount = Math.max(...Object.values(pipelineStages), 1);
 
     const ageRanges = ageDistribution?.age_ranges || {};
     const maxAgeCount = Math.max(...Object.values(ageRanges), 1);
@@ -148,41 +162,62 @@ export default function Analytics() {
                     color="bg-emerald-500"
                 />
                 <MetricCard
-                    label="Selected"
-                    value={pipelineFlow?.stages?.selected || 0}
+                    label="Good Fit"
+                    value={pipelineFlow?.categories?.goodFit || 0}
                     icon={<CheckCircle2 className="text-white" />}
-                    color="bg-green-500"
+                    color="bg-cyan-500"
                 />
             </div>
 
             {/* Main Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Pipeline Stages Bar Chart */}
+                {/* Engagement Overview */}
                 <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-6">
                     <h3 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
-                        <BarChart2 className="w-5 h-5" />
-                        Pipeline Stages
+                        <MessageSquare className="w-5 h-5" />
+                        Engagement Overview
                     </h3>
-                    <div className="space-y-4">
-                        {Object.entries(pipelineStages).map(([stage, count]) => {
-                            const percentage = (count / maxPipelineCount) * 100;
-                            const stageLabel = stage.charAt(0).toUpperCase() + stage.slice(1).replace(/([A-Z])/g, ' $1');
-                            return (
-                                <div key={stage} className="space-y-1">
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="text-slate-300">{stageLabel}</span>
-                                        <span className="text-white font-semibold">{count}</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-500"
-                                            style={{ width: `${percentage}%` }}
-                                        />
-                                    </div>
+                    {engagement && (
+                        <div className="space-y-6">
+                            {/* Contact Rate */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-400">Contact Rate</span>
+                                    <span className="text-lg font-bold text-white">{engagement.contact_rate.toFixed(1)}%</span>
                                 </div>
-                            );
-                        })}
-                    </div>
+                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                                        style={{ width: `${engagement.contact_rate}%` }}
+                                    />
+                                </div>
+                                <div className="text-xs text-slate-500">
+                                    {engagement.contacted_models} of {engagement.total_models} models contacted
+                                </div>
+                            </div>
+
+                            <div className="border-t border-white/5 pt-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-400">Active Chats</span>
+                                    <span className="text-sm font-semibold text-white">{engagement.active_chats}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-400">Total Messages</span>
+                                    <span className="text-sm font-semibold text-white">{engagement.total_messages}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-400">Avg Messages/Chat</span>
+                                    <span className="text-sm font-semibold text-white">{engagement.avg_messages_per_chat.toFixed(1)}</span>
+                                </div>
+                                {engagement.archived_chats > 0 && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-slate-400">Archived Chats</span>
+                                        <span className="text-sm font-semibold text-slate-500">{engagement.archived_chats}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* AI Classification Pie Chart (CSS-based) */}
@@ -195,9 +230,14 @@ export default function Analytics() {
                         <div className="space-y-4">
                             <div className="text-center py-4">
                                 <div className="text-3xl font-bold text-white mb-1">
-                                    {aiClassification.classification_rate.toFixed(1)}%
+                                    {aiClassification.total_models > 0 ? "100%" : "0%"}
                                 </div>
-                                <div className="text-sm text-slate-400">Classification Rate</div>
+                                <div className="text-sm text-slate-400">All Models Classified</div>
+                                {aiClassification.unclassified_count > 0 && (
+                                    <div className="text-xs text-amber-400 mt-1">
+                                        ⚠️ {aiClassification.unclassified_count} pending classification
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-3">
                                 {aiClassification.breakdown.map((item) => {
@@ -225,6 +265,22 @@ export default function Analytics() {
                                         </div>
                                     );
                                 })}
+                                {aiClassification.unclassified_count > 0 && (
+                                    <div className="flex items-center justify-between pt-2 border-t border-amber-500/20">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-full bg-amber-500" />
+                                            <span className="text-sm text-amber-400">Pending Classification</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-sm text-amber-400">
+                                                {((aiClassification.unclassified_count / aiClassification.total_models) * 100).toFixed(1)}%
+                                            </span>
+                                            <span className="text-sm font-semibold text-amber-400 w-8 text-right">
+                                                {aiClassification.unclassified_count}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -302,26 +358,6 @@ export default function Analytics() {
                 </div>
             </div>
 
-            {/* Conversion Rates */}
-            {pipelineFlow && pipelineFlow.conversion_rates && Object.keys(pipelineFlow.conversion_rates).length > 0 && (
-                <div className="bg-[#0A0A0A] border border-white/5 rounded-xl p-6">
-                    <h3 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5" />
-                        Conversion Rates
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {Object.entries(pipelineFlow.conversion_rates).map(([key, rate]) => {
-                            const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                            return (
-                                <div key={key} className="bg-slate-900/50 rounded-lg p-4 border border-white/5">
-                                    <div className="text-sm text-slate-400 mb-1">{label}</div>
-                                    <div className="text-2xl font-bold text-white">{rate.toFixed(1)}%</div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

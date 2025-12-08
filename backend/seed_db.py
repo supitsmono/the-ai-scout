@@ -19,57 +19,58 @@ def seed_database(force=False):
         if force and existing_count > 0:
             print(f"⚠️  Force mode: Re-seeding database (existing {existing_count} models will remain)")
         
-        # Create dummy models matching the frontend dummy data
-        dummy_models = [
-            Model(
-                name="Sophia Berg",
-                age=21,
-                height_cm=176,
-                country="Netherlands",
-                status="perfectFit",
-                ai_category="perfectFit"
-            ),
-            Model(
-                name="Emma Li",
-                age=19,
-                height_cm=170,
-                country="China",
-                status="goodFit",
-                ai_category="goodFit"
-            ),
-            Model(
-                name="Mila Rossi",
-                age=22,
-                height_cm=173,
-                country="Italy",
-                status="lowPotential",
-                ai_category="lowPotential"
-            ),
-            Model(
-                name="Ava Johnson",
-                age=20,
-                height_cm=174,
-                country="USA",
-                status="active",
-                ai_category=None
-            ),
-            Model(
-                name="Isabella Martinez",
-                age=23,
-                height_cm=175,
-                country="Spain",
-                status="perfectFit",
-                ai_category="perfectFit"
-            ),
-            Model(
-                name="Olivia Chen",
-                age=18,
-                height_cm=172,
-                country="Singapore",
-                status="goodFit",
-                ai_category="goodFit"
-            ),
+        # Create 30 dummy models with variety
+        import random
+        
+        first_names = [
+            "Sophia", "Emma", "Mila", "Ava", "Isabella", "Olivia", "Charlotte", "Amelia",
+            "Harper", "Evelyn", "Abigail", "Emily", "Ella", "Elizabeth", "Camila", "Luna",
+            "Sofia", "Avery", "Mia", "Aria", "Scarlett", "Victoria", "Madison", "Luna",
+            "Grace", "Chloe", "Penelope", "Layla", "Riley", "Zoey"
         ]
+        
+        last_names = [
+            "Berg", "Li", "Rossi", "Johnson", "Martinez", "Chen", "Williams", "Brown",
+            "Garcia", "Miller", "Davis", "Rodriguez", "Wilson", "Moore", "Taylor", "Anderson",
+            "Thomas", "Jackson", "White", "Harris", "Martin", "Thompson", "Garcia", "Martinez",
+            "Robinson", "Clark", "Rodriguez", "Lewis", "Lee", "Walker"
+        ]
+        
+        countries = [
+            "Netherlands", "China", "Italy", "USA", "Spain", "Singapore", "France", "Germany",
+            "UK", "Canada", "Australia", "Brazil", "Japan", "South Korea", "Sweden", "Norway",
+            "Denmark", "Belgium", "Switzerland", "Austria", "Poland", "Portugal", "Greece", "Turkey",
+            "Mexico", "Argentina", "Chile", "India", "Thailand", "Philippines"
+        ]
+        
+        categories = ["perfectFit", "goodFit", "lowPotential"]
+        category_weights = [0.3, 0.4, 0.3]  # 30% perfect, 40% good, 30% low
+        
+        dummy_models = []
+        for i in range(30):
+            first_name = random.choice(first_names)
+            last_name = random.choice(last_names)
+            # Avoid duplicates by checking if name already exists
+            full_name = f"{first_name} {last_name}"
+            while any(m.name == full_name for m in dummy_models):
+                last_name = random.choice(last_names)
+                full_name = f"{first_name} {last_name}"
+            
+            age = random.randint(18, 28)
+            height = random.randint(165, 185)
+            country = random.choice(countries)
+            category = random.choices(categories, weights=category_weights)[0]
+            
+            dummy_models.append(
+                Model(
+                    name=full_name,
+                    age=age,
+                    height_cm=height,
+                    country=country,
+                    status=category,
+                    ai_category=category
+                )
+            )
         
         for model in dummy_models:
             db.add(model)

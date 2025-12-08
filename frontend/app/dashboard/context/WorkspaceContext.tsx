@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type ViewMode = "home" | "applications" | "chats" | "analytics" | "favorites";
+type ViewMode = "home" | "applications" | "chats" | "analytics" | "favorites" | "settings";
 
 interface WorkspaceState {
   viewMode: ViewMode;
@@ -21,6 +21,7 @@ interface WorkspaceContextType extends WorkspaceState {
   setViewMode: (mode: ViewMode) => void;
   setSelectedModel: (modelId: number | null) => void;
   setActiveChat: (chatId: number | null) => void;
+  setViewModeAndChat: (mode: ViewMode, chatId: number | null) => void;
   setShowRightPanel: (show: boolean) => void;
   setSearchQuery: (query: string) => void;
   setSelectedTab: (tab: string) => void;
@@ -70,6 +71,8 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
       mappedView = "analytics";
     } else if (view === "favorites") {
       mappedView = "favorites";
+    } else if (view === "settings") {
+      mappedView = "settings";
     } else if (view === "home") {
       mappedView = "home";
     }
@@ -104,6 +107,8 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
         mappedView = "analytics";
       } else if (view === "favorites") {
         mappedView = "favorites";
+      } else if (view === "settings") {
+        mappedView = "settings";
       } else if (view === "home") {
         mappedView = "home";
       }
@@ -185,6 +190,16 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
     });
   };
 
+  const setViewModeAndChat = (mode: ViewMode, chatId: number | null) => {
+    setState((prev) => ({
+      ...prev,
+      viewMode: mode,
+      activeChatId: chatId,
+      selectedModelId: null,
+      showRightPanel: false,
+    }));
+  };
+
   const setShowRightPanel = (show: boolean) => {
     setState((prev) => ({ ...prev, showRightPanel: show }));
   };
@@ -230,6 +245,7 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
         setViewMode,
         setSelectedModel,
         setActiveChat,
+        setViewModeAndChat,
         setShowRightPanel,
         setSearchQuery,
         setSelectedTab,
