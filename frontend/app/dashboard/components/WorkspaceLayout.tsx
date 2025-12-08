@@ -6,6 +6,7 @@ import LeftPanel from "./LeftPanel";
 import CenterPanel from "./CenterPanel";
 import RightPanel from "./RightPanel";
 import TopBar from "./TopBar";
+import { Menu } from "lucide-react";
 
 interface WorkspaceLayoutProps {
   children?: ReactNode;
@@ -14,12 +15,12 @@ interface WorkspaceLayoutProps {
 export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const { viewMode } = useWorkspace();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  
-  // Show left panel for both Applications and Chats views
-  const showLeftPanel = viewMode === "chats" || viewMode === "applications";
+
+  // Show left panel for both Applications, Chats and Favorites views
+  const showLeftPanel = viewMode === "chats" || viewMode === "applications" || viewMode === "favorites";
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#050505]">
+    <div className="flex flex-col h-full w-full">
       {/* Top Navigation Bar */}
       <TopBar />
 
@@ -28,7 +29,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         {/* Mobile overlay */}
         {showLeftPanel && leftPanelOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setLeftPanelOpen(false)}
           />
         )}
@@ -36,34 +37,36 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         {/* Left Panel - Shown for Applications and Chats views */}
         {showLeftPanel && (
           <div
-            className={`${
-              leftPanelOpen ? "translate-x-0" : "-translate-x-full"
-            } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-80 border-r border-white/10 overflow-y-auto bg-[#050505] transition-transform duration-300`}
+            className={`${leftPanelOpen ? "translate-x-0" : "-translate-x-full"
+              } lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-80 border-r border-slate-800/50 bg-[#0B0F19]/60 backdrop-blur-xl transition-transform duration-300`}
           >
             <LeftPanel onClose={() => setLeftPanelOpen(false)} />
           </div>
         )}
 
         {/* Center Panel - Model Detail / Chat Window / Pipeline */}
-        <div className="flex-1 overflow-y-auto relative">
-          {/* Mobile menu button - show for Applications and Chats views */}
+        <div className="flex-1 overflow-hidden relative flex flex-col">
+          {/* Mobile menu button */}
           {showLeftPanel && (
             <button
               onClick={() => setLeftPanelOpen(true)}
-              className="lg:hidden fixed top-16 left-4 z-30 p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              className="lg:hidden absolute top-4 left-4 z-30 p-2 bg-slate-900/80 text-white rounded-lg border border-slate-800 hover:bg-slate-800 transition-colors"
             >
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              <Menu size={20} />
             </button>
           )}
-          <CenterPanel />
+
+          {/* Content Area - Scrollable */}
+          {/* Remove padding for chats view to allow full-width design */}
+          <div className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent ${viewMode === 'chats' ? '' : 'p-4 sm:p-6'}`}>
+            <CenterPanel />
+          </div>
         </div>
 
         {/* Right Panel - Profile / Info (optional, slides in) */}
-        <RightPanel />
+        {/* Only show global RightPanel if NOT in chats view (Chats handles its own profile panel) */}
+        {viewMode !== 'chats' && <RightPanel />}
       </div>
     </div>
   );
 }
-

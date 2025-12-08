@@ -1,16 +1,31 @@
 /* -----------------------------------------------------------
    Tailwind v4 base imports
 ----------------------------------------------------------- */
-@import "tailwindcss/preflight";
-@import "tailwindcss/theme";
-@import "tailwindcss/utilities";
+@import "tailwindcss";
 
+@layer theme {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+}
 
-/* -----------------------------------------------------------
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+  /* Offset for sticky header */
+}
+
+/* @apply works after importing tailwindcss */
+@layer base {
+
+  /* -----------------------------------------------------------
    Global smoothness + font rendering
 ----------------------------------------------------------- */
-html, body {
-  @apply antialiased text-white bg-[#050816] scroll-smooth;
+  html,
+  body {
+    @apply antialiased text-white bg-[#050816] scroll-smooth;
+  }
 }
 
 body {
@@ -24,9 +39,7 @@ body {
 ----------------------------------------------------------- */
 
 .input {
-  @apply w-full rounded-lg border border-slate-800 bg-slate-950/70 
-         px-3 py-2 text-xs text-slate-100 outline-none transition-colors
-         focus:border-cyan-400 focus:bg-slate-950;
+  @apply w-full rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-100 outline-none transition-colors focus:border-cyan-400 focus:bg-slate-950;
 }
 
 
@@ -55,7 +68,8 @@ body {
    Selection colors
 ----------------------------------------------------------- */
 ::selection {
-  background: rgba(56, 189, 248, 0.4); /* cyan-400 */
+  background: rgba(56, 189, 248, 0.4);
+  /* cyan-400 */
   color: white;
 }
 
@@ -63,7 +77,12 @@ body {
 /* -----------------------------------------------------------
    General typography improvements
 ----------------------------------------------------------- */
-p, span, label, input, button, textarea {
+p,
+span,
+label,
+input,
+button,
+textarea {
   @apply tracking-tight;
 }
 
@@ -77,8 +96,15 @@ p, span, label, input, button, textarea {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 
@@ -95,21 +121,15 @@ p, span, label, input, button, textarea {
 ----------------------------------------------------------- */
 
 .btn-primary {
-  @apply inline-flex items-center justify-center rounded-full 
-         bg-white text-slate-950 text-xs font-semibold px-5 py-2.5 
-         hover:bg-slate-100 transition shadow-sm;
+  @apply inline-flex items-center justify-center rounded-full bg-white text-slate-950 text-xs font-semibold px-5 py-2.5 hover:bg-slate-100 transition shadow-sm;
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center rounded-full 
-         border border-slate-700 bg-slate-900/80 text-xs font-medium 
-         px-5 py-2 text-slate-100 hover:bg-slate-800 transition;
+  @apply inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-xs font-medium px-5 py-2 text-slate-100 hover:bg-slate-800 transition;
 }
 
 .btn-danger {
-  @apply inline-flex items-center justify-center rounded-full 
-         bg-red-600 text-white text-xs font-medium px-5 py-2.5 
-         hover:bg-red-700 transition;
+  @apply inline-flex items-center justify-center rounded-full bg-red-600 text-white text-xs font-medium px-5 py-2.5 hover:bg-red-700 transition;
 }
 
 
@@ -122,4 +142,18 @@ p, span, label, input, button, textarea {
 
 .section-sub {
   @apply text-[11px] text-slate-400;
+}
+
+
+/* -----------------------------------------------------------
+   Remove Number Input Spinners (Webkit + Firefox)
+----------------------------------------------------------- */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
 }

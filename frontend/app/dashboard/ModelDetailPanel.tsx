@@ -1,9 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import StatusBadge from "@/components/ui/StatusBadge";
 import type { DashboardModel } from "./page";
+import { 
+  X, 
+  Heart, 
+  MessageCircle, 
+  Ruler, 
+  Info, 
+  ChevronLeft, 
+  ChevronRight,
+  Sparkles,
+  User,
+  MapPin,
+  Calendar
+} from "lucide-react";
 
 type PhotoObj = {
   url: string;
@@ -17,8 +29,7 @@ type Props = {
   onFavoriteToggle?: () => void;
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function ModelDetailPanel({
   model,
@@ -28,85 +39,62 @@ export default function ModelDetailPanel({
 }: Props) {
   if (!model) return null;
 
-  const photos: PhotoObj[] =
-    model.photos?.map((p: any) =>
+  // Normalize photos - limit to reasonable number
+  let photos: PhotoObj[] =
+    model.photos?.slice(0, 12).map((p: any) =>
       typeof p === "string" ? { url: p, type: "" } : p
     ) ?? [];
 
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
+  if (photos.length === 0) {
+    photos = [
+      { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Portrait" },
+    ];
+  }
+
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [isContacting, setIsContacting] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
-  const [showFavoriteSuccess, setShowFavoriteSuccess] = useState(false);
-  const [wasFavorite, setWasFavorite] = useState(model.status === "favorite");
+  const [isFavorite, setIsFavorite] = useState(model.status === "favorite");
 
-  // Update wasFavorite when model changes
   useEffect(() => {
-    setWasFavorite(model.status === "favorite");
+    setIsFavorite(model.status === "favorite");
   }, [model.status]);
 
-  const nextPhoto = () =>
-    setPhotoIndex((prev) => (prev + 1) % photos.length);
-  const prevPhoto = () =>
-    setPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  // Close lightbox on Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (selectedPhotoIndex !== null) {
+          setSelectedPhotoIndex(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [selectedPhotoIndex, onClose]);
 
   const handleContactClick = async () => {
     if (!model || isContacting) return;
     setIsContacting(true);
-
     try {
-      const res = await fetch(
-        `${API_BASE}/models/${model.id}/contact`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+      const res = await fetch(`${API_BASE}/models/${model.id}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const chatId = data.chat_id;
+        if (onContact && chatId) {
+          onContact(model.id, chatId);
+        } else {
+          onClose();
         }
-      );
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        let errorMessage = "Something went wrong contacting this model.";
-        
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.detail || errorMessage;
-        } catch {
-          // If error is not JSON, use the text or default message
-          if (res.status === 404) {
-            errorMessage = "Model not found in database. Please refresh the page.";
-          } else if (res.status === 400) {
-            errorMessage = errorText || "This model has already been contacted.";
-          }
-        }
-        
-        console.error("Contact error:", res.status, errorText);
-        alert(errorMessage);
-        return;
       }
-
-      const data = await res.json();
-      
-      // Handle both response formats:
-      // 1. { model: ..., chat_id: number } from models.py
-      // 2. { message, model_id, chat_id, status } from status.py
-      const chatId = data.chat_id as number | undefined;
-
-      if (onContact) {
-        onContact(model.id, chatId);
-        // Don't close - let the parent handle navigation to chat
-        return;
-      }
-      
-      // Fallback: close the panel if no onContact handler
-      onClose();
     } catch (err) {
-      console.error("Network error:", err);
-      const errorMessage = err instanceof Error 
-        ? `Network error: ${err.message}. Make sure the backend is running on ${API_BASE}`
-        : "Network error while contacting this model. Please check if the backend is running.";
-      alert(errorMessage);
+      console.error("Error contacting model:", err);
+      alert("Failed to contact model. Please try again.");
     } finally {
       setIsContacting(false);
     }
@@ -115,152 +103,163 @@ export default function ModelDetailPanel({
   const handleToggleFavorite = async () => {
     if (!model || isTogglingFavorite) return;
     setIsTogglingFavorite(true);
-    setWasFavorite(model.status === "favorite");
-
     try {
       const res = await fetch(`${API_BASE}/models/${model.id}/favorite`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
-
-      if (!res.ok) {
-        throw new Error("Failed to toggle favorite");
-      }
-
-      const data = await res.json();
-      
-      // Show success animation
-      setShowFavoriteSuccess(true);
-      setTimeout(() => setShowFavoriteSuccess(false), 2000);
-      
-      // Update local state and notify parent
-      if (onFavoriteToggle) {
-        // Small delay to show animation before updating
-        setTimeout(() => {
-          onFavoriteToggle();
-        }, 300);
-      } else {
-        // Fallback: reload page
-        setTimeout(() => {
-          window.location.reload();
-        }, 300);
+      if (res.ok) {
+        setIsFavorite(!isFavorite);
+        if (onFavoriteToggle) onFavoriteToggle();
       }
     } catch (err) {
       console.error("Error toggling favorite:", err);
-      alert("Failed to update favorite status.");
     } finally {
-      setTimeout(() => {
-        setIsTogglingFavorite(false);
-      }, 300);
+      setIsTogglingFavorite(false);
     }
   };
 
-  const isFavorite = model.status === "favorite";
+  const navigatePhoto = (direction: "prev" | "next") => {
+    if (selectedPhotoIndex === null) return;
+    if (direction === "prev") {
+      setSelectedPhotoIndex(selectedPhotoIndex > 0 ? selectedPhotoIndex - 1 : photos.length - 1);
+    } else {
+      setSelectedPhotoIndex(selectedPhotoIndex < photos.length - 1 ? selectedPhotoIndex + 1 : 0);
+    }
+  };
 
   return (
-    <>
-      <div className="w-full bg-[#050505] rounded-2xl border border-white/10 overflow-hidden">
-        {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <div>
-            <h2 className="text-2xl font-semibold text-white">{model.name}</h2>
-
-            <p className="text-gray-400 text-sm">
-              {model.age} y/o • {model.height} cm • {model.country}
-            </p>
-
-            <div className="mt-2">
-              <StatusBadge status={model.status} />
-            </div>
-          </div>
-
+    <div className="h-full flex flex-col bg-[#0A0A0A] relative">
+      {/* HEADER */}
+      <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0A0A0A] sticky top-0 z-20">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-sm"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors shrink-0"
+            aria-label="Close"
           >
-            Close ✕
+            <X size={20} className="text-gray-400" />
           </button>
-        </div>
-
-        {/* MAIN CONTENT */}
-        <div className="px-6 py-6 space-y-6">
-          {/* PHOTO VIEWER */}
-          <div className="relative w-full h-[360px] rounded-xl overflow-hidden bg-black">
-            <img
-              src={photos[photoIndex].url}
-              className="w-full h-full object-cover cursor-pointer"
-              onClick={() => setFullscreenIndex(photoIndex)}
-            />
-
-            {photos[photoIndex].type && (
-              <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-medium">
-                {photos[photoIndex].type}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
+              <img 
+                src={photos[0]?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg"} 
+                alt={model.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-white truncate">{model.name}</h2>
+              <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                <span className="flex items-center gap-1">
+                  <Calendar size={12} />
+                  {model.age} years
+                </span>
+                <span>•</span>
+                <span>{model.height} cm</span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <MapPin size={12} />
+                  {model.country}
+                </span>
               </div>
-            )}
-            
-            {photos.length > 1 && (
-              <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
-                {photoIndex + 1} / {photos.length}
-              </div>
-            )}
-
-            <button
-              onClick={prevPhoto}
-              className="absolute top-1/2 left-3 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded-full text-lg"
-            >
-              ‹
-            </button>
-
-            <button
-              onClick={nextPhoto}
-              className="absolute top-1/2 right-3 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded-full text-lg"
-            >
-              ›
-            </button>
+            </div>
+            <StatusBadge status={model.status} />
           </div>
+        </div>
+      </div>
 
-          {/* THUMBNAILS */}
-          {photos.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {photos.map((p, i) => (
-                <div
+      {/* CONTENT */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
+          
+          {/* PHOTO GALLERY - Compact Grid */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <User size={14} />
+              Portfolio ({photos.length} photos)
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {photos.map((photo, i) => (
+                <button
                   key={i}
-                  className={`relative w-20 h-24 rounded-lg overflow-hidden cursor-pointer border shrink-0 ${
-                    i === photoIndex
-                      ? "border-purple-500 shadow-lg shadow-purple-500/30"
-                      : "border-white/10 opacity-70 hover:opacity-100 hover:border-white/30"
-                  }`}
-                  onClick={() => setPhotoIndex(i)}
+                  onClick={() => setSelectedPhotoIndex(i)}
+                  className="aspect-[3/4] rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all group relative bg-[#111]"
                 >
-                  <img src={p.url} className="w-full h-full object-cover" />
-                  {p.type && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 text-center truncate">
-                      {p.type}
+                  <img 
+                    src={photo.url} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                    alt={`${model.name} - ${photo.type || `Photo ${i + 1}`}`}
+                  />
+                  {photo.type && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-2">
+                        <p className="text-[10px] text-white font-medium truncate">{photo.type}</p>
+                      </div>
                     </div>
                   )}
-                </div>
+                </button>
               ))}
             </div>
-          )}
+          </div>
 
-          {/* AI CLASSIFICATION */}
-          {model.aiCategory && (
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <span>🤖</span> AI Classification
+          {/* INFO SECTIONS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Measurements */}
+            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Ruler size={14} />
+                Measurements
               </h3>
-              <div className="mb-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Bust</div>
+                  <div className="text-white font-semibold text-lg">{model.measurements?.bust || "—"} cm</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Waist</div>
+                  <div className="text-white font-semibold text-lg">{model.measurements?.waist || "—"} cm</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Hips</div>
+                  <div className="text-white font-semibold text-lg">{model.measurements?.hips || "—"} cm</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Shoe Size</div>
+                  <div className="text-white font-semibold text-lg">39 EU</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bio & Motivation */}
+            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Info size={14} />
+                Bio & Motivation
+              </h3>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {model.motivation || "No motivation provided yet."}
+              </p>
+            </div>
+          </div>
+
+          {/* AI Classification */}
+          {model.aiCategory && (
+            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Sparkles size={14} />
+                AI Classification
+              </h3>
+              <div className="mb-4">
                 <StatusBadge status={model.aiCategory} />
               </div>
               {model.aiReasons && model.aiReasons.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-2">Why this classification:</p>
-                  <ul className="space-y-1">
-                    {model.aiReasons.map((reason: string, idx: number) => (
-                      <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
-                        <span className="text-purple-400 mt-1">•</span>
+                  <p className="text-xs text-gray-500 mb-3">Analysis Summary:</p>
+                  <ul className="space-y-2">
+                    {model.aiReasons.map((reason, i) => (
+                      <li key={i} className="text-sm text-gray-300 flex items-start">
+                        <span className="mr-2 text-purple-400 mt-0.5">•</span>
                         <span>{reason}</span>
                       </li>
                     ))}
@@ -269,174 +268,93 @@ export default function ModelDetailPanel({
               )}
             </div>
           )}
-
-          {/* MEASUREMENTS + MOTIVATION */}
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-2">
-                Measurements
-              </h3>
-              <p className="text-gray-300 text-sm">
-                Bust: {model.measurements?.bust} cm
-              </p>
-              <p className="text-gray-300 text-sm">
-                Waist: {model.measurements?.waist} cm
-              </p>
-              <p className="text-gray-300 text-sm">
-                Hips: {model.measurements?.hips} cm
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-white mb-2">
-                Motivation
-              </h3>
-              <p className="text-gray-300 text-sm leading-relaxed">
-                {model.motivation}
-              </p>
-            </div>
-          </div>
-
-          {/* ACTIONS */}
-          <div className="flex gap-3 relative">
-            {/* FAVORITE BUTTON */}
-            <motion.button
-              onClick={handleToggleFavorite}
-              disabled={isTogglingFavorite}
-              className={`flex-1 py-4 rounded-xl font-semibold text-base relative overflow-hidden ${
-                isFavorite || showFavoriteSuccess
-                  ? "bg-purple-600 hover:bg-purple-700 text-white"
-                  : "bg-white/10 hover:bg-white/20 text-gray-300"
-              } disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300`}
-              whileTap={{ scale: 0.98 }}
-              animate={
-                showFavoriteSuccess
-                  ? {
-                      scale: [1, 1.05, 1],
-                      boxShadow: [
-                        "0 0 0px rgba(124, 58, 237, 0)",
-                        "0 0 20px rgba(124, 58, 237, 0.6)",
-                        "0 0 0px rgba(124, 58, 237, 0)",
-                      ],
-                    }
-                  : {}
-              }
-              transition={{
-                scale: { duration: 0.3 },
-                boxShadow: { duration: 0.5 },
-              }}
-            >
-              {/* Success overlay */}
-              {showFavoriteSuccess && (
-                <motion.div
-                  className="absolute inset-0 bg-purple-600 flex items-center justify-center"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.2 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <motion.div
-                    className="flex items-center gap-2"
-                    initial={{ y: -10, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <motion.svg
-                      className="w-6 h-6 text-white"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 200,
-                        damping: 15,
-                      }}
-                    >
-                      <motion.path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                        initial={{ pathLength: 0 }}
-                        animate={{ pathLength: 1 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                      />
-                    </motion.svg>
-                    <motion.span
-                      className="text-white font-semibold"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      {wasFavorite ? "Removed" : "Added to Favorites!"}
-                    </motion.span>
-                  </motion.div>
-                </motion.div>
-              )}
-
-              {/* Button content */}
-              <motion.div
-                className="flex items-center justify-center gap-2"
-                animate={
-                  showFavoriteSuccess
-                    ? { opacity: 0 }
-                    : isTogglingFavorite
-                    ? { opacity: 0.7 }
-                    : { opacity: 1 }
-                }
-                transition={{ duration: 0.2 }}
-              >
-                {isTogglingFavorite ? (
-                  <>
-                    <motion.div
-                      className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 0.8,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                    />
-                    <span>Updating...</span>
-                  </>
-                ) : isFavorite ? (
-                  <>
-                    <motion.span
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{
-                        duration: 0.5,
-                        repeat: Infinity,
-                        repeatDelay: 2,
-                      }}
-                    >
-                      ⭐
-                    </motion.span>
-                    <span>Favorited</span>
-                  </>
-                ) : (
-                  <>
-                    <span>☆</span>
-                    <span>Add to Favorites</span>
-                  </>
-                )}
-              </motion.div>
-            </motion.button>
-
-            {/* CONTACT BUTTON */}
-            {model.status !== "contacted" && (
-              <button
-                onClick={handleContactClick}
-                disabled={isContacting}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold text-base"
-              >
-                {isContacting ? "Contacting..." : "🟣 Contact"}
-              </button>
-            )}
-          </div>
         </div>
       </div>
-    </>
+
+      {/* FOOTER ACTIONS */}
+      <div className="flex-none p-4 border-t border-white/10 bg-[#0A0A0A] flex gap-3">
+        <button
+          onClick={handleToggleFavorite}
+          disabled={isTogglingFavorite}
+          className={`px-5 py-2.5 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 shrink-0 ${
+            isFavorite
+              ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30"
+              : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/10"
+          }`}
+        >
+          <Heart size={16} className={isFavorite ? "fill-yellow-400" : ""} />
+          {isFavorite ? "Favorited" : "Favorite"}
+        </button>
+
+        {model.status !== "contacted" ? (
+          <button
+            onClick={handleContactClick}
+            disabled={isContacting}
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isContacting ? (
+              <span className="animate-pulse">Contacting...</span>
+            ) : (
+              <>
+                <MessageCircle size={16} />
+                Contact Model
+              </>
+            )}
+          </button>
+        ) : (
+          <button disabled className="flex-1 bg-white/5 text-gray-500 rounded-lg font-semibold text-sm border border-white/10 cursor-not-allowed">
+            Already Contacted
+          </button>
+        )}
+      </div>
+
+      {/* SIMPLE LIGHTBOX - Only shows when photo is selected */}
+      {selectedPhotoIndex !== null && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setSelectedPhotoIndex(null)}
+        >
+          <button
+            onClick={() => setSelectedPhotoIndex(null)}
+            className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Close"
+          >
+            <X size={24} className="text-white" />
+          </button>
+          
+          <button
+            onClick={(e) => { e.stopPropagation(); navigatePhoto("prev"); }}
+            className="absolute left-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Previous"
+          >
+            <ChevronLeft size={24} className="text-white" />
+          </button>
+          
+          <button
+            onClick={(e) => { e.stopPropagation(); navigatePhoto("next"); }}
+            className="absolute right-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Next"
+          >
+            <ChevronRight size={24} className="text-white" />
+          </button>
+
+          <div 
+            className="max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={photos[selectedPhotoIndex].url}
+              alt={`${model.name} - ${photos[selectedPhotoIndex].type || `Photo ${selectedPhotoIndex + 1}`}`}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg text-sm text-white">
+            {selectedPhotoIndex + 1} / {photos.length}
+            {photos[selectedPhotoIndex].type && ` • ${photos[selectedPhotoIndex].type}`}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

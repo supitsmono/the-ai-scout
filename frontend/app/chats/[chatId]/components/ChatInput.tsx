@@ -32,29 +32,52 @@ export default function ChatInput({ onSend }) {
   };
 
   return (
-    <div className="flex gap-3 mt-4">
-      <div className="flex-1 relative">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="w-full bg-[#111] border border-white/10 rounded-xl px-4 py-3 text-sm outline-none resize-none min-h-[48px] max-h-[120px] focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 transition-all"
-          placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
-          rows={1}
-        />
-        <div className="absolute bottom-2 right-2 text-xs text-gray-500">
-          {text.length > 0 && `${text.length} chars`}
+    <div className="relative border border-slate-700/50 rounded-xl bg-[#1A1D21] focus-within:border-slate-500 focus-within:shadow-sm transition-all overflow-hidden">
+      {/* Text Area */}
+      <textarea
+        ref={textareaRef}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className="w-full bg-transparent text-slate-200 px-4 py-3 text-sm outline-none resize-none min-h-[48px] max-h-[200px] placeholder:text-slate-500 font-normal leading-relaxed custom-scrollbar"
+        placeholder="Message #general..."
+        rows={1}
+      />
+
+      {/* Toolbar / Actions */}
+      <div className="flex items-center justify-between px-2 py-2 bg-[#1A1D21]">
+        <div className="flex items-center gap-1">
+          {/* Visual-only toolbar buttons for aesthetic */}
+          <button className="p-1.5 text-slate-400 hover:bg-white/5 rounded-md transition-colors" title="Add attachment">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          </button>
+          <div className="w-px h-4 bg-slate-700 mx-1" />
+          <button className="p-1.5 text-slate-400 hover:bg-white/5 rounded-md transition-colors font-bold text-xs">B</button>
+          <button className="p-1.5 text-slate-400 hover:bg-white/5 rounded-md transition-colors italic text-xs">I</button>
+          <button className="p-1.5 text-slate-400 hover:bg-white/5 rounded-md transition-colors line-through text-xs">S</button>
+          <div className="w-px h-4 bg-slate-700 mx-1" />
+          <button className="p-1.5 text-slate-400 hover:bg-white/5 rounded-md transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </button>
+          <button className="p-1.5 text-slate-400 hover:bg-white/5 rounded-md transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {text.length > 0 && <span className="text-[10px] text-slate-600">{text.length}</span>}
+          <button
+            onClick={send}
+            disabled={!text.trim()}
+            className={`p-2 rounded-lg transition-all ${text.trim()
+                ? "bg-[#007a5a] text-white hover:bg-[#148567]"
+                : "bg-transparent text-slate-500 cursor-not-allowed"
+              }`}
+          >
+            <svg className="w-4 h-4 transform rotate-90" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+          </button>
         </div>
       </div>
-
-      <button
-        onClick={send}
-        disabled={!text.trim()}
-        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:cursor-not-allowed disabled:opacity-50 rounded-xl text-white text-sm font-semibold transition-all hover:scale-105 active:scale-95"
-      >
-        Send
-      </button>
     </div>
   );
 }

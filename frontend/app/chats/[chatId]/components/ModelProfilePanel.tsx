@@ -1,8 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import StatusBadge from "@/components/ui/StatusBadge";
+import { 
+  X, 
+  ChevronLeft, 
+  ChevronRight,
+  Ruler, 
+  Info,
+  Sparkles,
+  User,
+  MapPin,
+  Calendar
+} from "lucide-react";
 
 type PhotoObj = {
   url: string;
@@ -24,6 +34,8 @@ type ModelData = {
     hips?: number;
   };
   motivation?: string;
+  aiCategory?: string | null;
+  aiReasons?: string[] | null;
 };
 
 type Props = {
@@ -34,334 +46,247 @@ type Props = {
 export default function ModelProfilePanel({ model, onClose }: Props) {
   if (!model) return null;
 
-  // Normalize photos - handle both string arrays and PhotoObj arrays
-  // Also check if photos exist in model data, otherwise use placeholder
+  // Normalize photos - limit to reasonable number
   let photos: PhotoObj[] = [];
-  
   if (model.photos && Array.isArray(model.photos) && model.photos.length > 0) {
-    photos = model.photos.map((p: any) =>
+    photos = model.photos.slice(0, 12).map((p: any) =>
       typeof p === "string" ? { url: p, type: "" } : p
     );
   } else {
-    // Use placeholder photos if none available
     photos = [
-      {
-        url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg",
-        type: "Full Face",
-      },
-      {
-        url: "https://images.pexels.com/photos/1704488/pexels-photo-1704488.jpeg",
-        type: "Side Profile",
-      },
-      {
-        url: "https://images.pexels.com/photos/1642228/pexels-photo-1642228.jpeg",
-        type: "Full Body",
-      },
+      { url: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg", type: "Portrait" },
     ];
   }
 
-  // Use first photo as fallback if no photos array
-  const defaultPhoto =
-    photos.length > 0
-      ? photos[0].url
-      : "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg";
-
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const [fullscreenIndex, setFullscreenIndex] = useState<number | null>(null);
-
-  const nextPhoto = () =>
-    setPhotoIndex((prev) => (prev + 1) % Math.max(photos.length, 1));
-  const prevPhoto = () =>
-    setPhotoIndex((prev) => (prev - 1 + Math.max(photos.length, 1)) % Math.max(photos.length, 1));
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   const displayHeight = model.height || model.height_cm;
   const displayStatus = model.status || "active";
 
+  // Close lightbox on Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (selectedPhotoIndex !== null) {
+          setSelectedPhotoIndex(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [selectedPhotoIndex, onClose]);
+
+  const navigatePhoto = (direction: "prev" | "next") => {
+    if (selectedPhotoIndex === null) return;
+    if (direction === "prev") {
+      setSelectedPhotoIndex(selectedPhotoIndex > 0 ? selectedPhotoIndex - 1 : photos.length - 1);
+    } else {
+      setSelectedPhotoIndex(selectedPhotoIndex < photos.length - 1 ? selectedPhotoIndex + 1 : 0);
+    }
+  };
+
   return (
-    <div className="h-full w-full bg-[#050505] overflow-y-auto">
-        {/* HEADER */}
-        <div className="sticky top-0 bg-[#050505] z-10 flex items-center justify-between px-6 py-4 border-b border-white/10 backdrop-blur-sm">
-          <div>
-            <h2 className="text-2xl font-semibold text-white">{model.name}</h2>
-
-            <p className="text-gray-400 text-sm mt-1">
-              {model.age && `${model.age} y/o`}
-              {displayHeight && ` • ${displayHeight} cm`}
-              {model.country && ` • ${model.country}`}
-            </p>
-
-            <div className="mt-3">
-              <StatusBadge status={displayStatus} />
-            </div>
-          </div>
-
+    <div className="h-full flex flex-col bg-[#0A0A0A] relative">
+      {/* HEADER */}
+      <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0A0A0A] sticky top-0 z-20">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-            aria-label="Close profile"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors shrink-0"
+            aria-label="Close"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X size={20} className="text-gray-400" />
           </button>
-        </div>
-
-        {/* MAIN CONTENT */}
-        <div className="px-6 py-6 space-y-6">
-          {/* PHOTO VIEWER */}
-          {photos.length > 0 ? (
-            <>
-              <div className="relative w-full h-[360px] rounded-2xl overflow-hidden bg-black/50 border border-white/10">
-                <img
-                  src={photos[photoIndex]?.url || defaultPhoto}
-                  className="w-full h-full object-cover cursor-pointer"
-                  onClick={() => setFullscreenIndex(photoIndex)}
-                  alt={`${model.name} - Photo ${photoIndex + 1}`}
-                />
-
-                {photos[photoIndex]?.type && (
-                  <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full font-medium">
-                    {photos[photoIndex].type}
-                  </div>
-                )}
-
-                {photos.length > 1 && (
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shrink-0">
+              <img 
+                src={photos[0]?.url || "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg"} 
+                alt={model.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold text-white truncate">{model.name}</h2>
+              <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                {model.age && (
                   <>
-                    <button
-                      onClick={prevPhoto}
-                      className="absolute top-1/2 left-3 -translate-y-1/2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white px-3 py-2 rounded-full text-lg transition-all hover:scale-110"
-                      aria-label="Previous photo"
-                    >
-                      ‹
-                    </button>
-
-                    <button
-                      onClick={nextPhoto}
-                      className="absolute top-1/2 right-3 -translate-y-1/2 bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white px-3 py-2 rounded-full text-lg transition-all hover:scale-110"
-                      aria-label="Next photo"
-                    >
-                      ›
-                    </button>
+                    <span className="flex items-center gap-1">
+                      <Calendar size={12} />
+                      {model.age} years
+                    </span>
+                    <span>•</span>
                   </>
                 )}
-
-                {photos.length > 1 && (
-                  <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
-                    {photoIndex + 1} / {photos.length}
-                  </div>
+                {displayHeight && <span>{displayHeight} cm</span>}
+                {model.country && (
+                  <>
+                    {(model.age || displayHeight) && <span>•</span>}
+                    <span className="flex items-center gap-1">
+                      <MapPin size={12} />
+                      {model.country}
+                    </span>
+                  </>
                 )}
               </div>
-
-              {/* THUMBNAILS */}
-              {photos.length > 1 && (
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {photos.map((p, i) => (
-                    <div
-                      key={i}
-                      className={`relative w-20 h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-all flex-shrink-0 ${
-                        i === photoIndex
-                          ? "border-purple-500 shadow-lg shadow-purple-500/30"
-                          : "border-white/10 opacity-70 hover:opacity-100 hover:border-white/30"
-                      }`}
-                      onClick={() => setPhotoIndex(i)}
-                    >
-                      <img
-                        src={p.url}
-                        className="w-full h-full object-cover"
-                        alt={`Thumbnail ${i + 1}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="relative w-full h-[360px] rounded-2xl overflow-hidden bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-white/10 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-24 h-24 rounded-full bg-white/10 mx-auto mb-4 flex items-center justify-center">
-                  <svg
-                    className="w-12 h-12 text-white/40"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-400 text-sm">No photos available</p>
-              </div>
             </div>
-          )}
-
-          {/* MEASUREMENTS + MOTIVATION */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {model.measurements && (
-              <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                    />
-                  </svg>
-                  Measurements
-                </h3>
-                <div className="space-y-2">
-                  {model.measurements.bust && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Bust:</span>
-                      <span className="text-white font-medium">
-                        {model.measurements.bust} cm
-                      </span>
-                    </div>
-                  )}
-                  {model.measurements.waist && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Waist:</span>
-                      <span className="text-white font-medium">
-                        {model.measurements.waist} cm
-                      </span>
-                    </div>
-                  )}
-                  {model.measurements.hips && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Hips:</span>
-                      <span className="text-white font-medium">
-                        {model.measurements.hips} cm
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {model.motivation && (
-              <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4 text-purple-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-                    />
-                  </svg>
-                  Motivation
-                </h3>
-                <p className="text-gray-300 text-sm leading-relaxed">
-                  {model.motivation}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* ADDITIONAL INFO */}
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <svg
-                className="w-4 h-4 text-purple-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Profile Information
-            </h3>
-            <div className="space-y-2 text-sm">
-              {model.age && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Age:</span>
-                  <span className="text-white font-medium">{model.age} years</span>
-                </div>
-              )}
-              {displayHeight && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Height:</span>
-                  <span className="text-white font-medium">{displayHeight} cm</span>
-                </div>
-              )}
-              {model.country && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Country:</span>
-                  <span className="text-white font-medium">{model.country}</span>
-                </div>
-              )}
-            </div>
+            <StatusBadge status={displayStatus} />
           </div>
         </div>
+      </div>
 
-        {/* FULLSCREEN MODAL */}
-        <AnimatePresence>
-          {fullscreenIndex !== null && photos.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4"
-              onClick={() => setFullscreenIndex(null)}
-            >
-              <button
-                onClick={() => setFullscreenIndex(null)}
-                className="absolute top-4 right-4 text-white hover:text-gray-300 p-2"
-                aria-label="Close fullscreen"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+      {/* CONTENT */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
+          
+          {/* PHOTO GALLERY - Compact Grid */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <User size={14} />
+              Portfolio ({photos.length} photos)
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              {photos.map((photo, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedPhotoIndex(i)}
+                  className="aspect-[3/4] rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-all group relative bg-[#111]"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
+                  <img 
+                    src={photo.url} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" 
+                    alt={`${model.name} - ${photo.type || `Photo ${i + 1}`}`}
                   />
-                </svg>
-              </button>
-              <img
-                src={photos[fullscreenIndex]?.url}
-                className="max-w-full max-h-full object-contain"
-                alt={`${model.name} - Fullscreen`}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </motion.div>
+                  {photo.type && (
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute bottom-0 left-0 right-0 p-2">
+                        <p className="text-[10px] text-white font-medium truncate">{photo.type}</p>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* INFO SECTIONS */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Measurements */}
+            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Ruler size={14} />
+                Measurements
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {displayHeight && (
+                  <div>
+                    <div className="text-gray-500 text-xs mb-1.5">Height</div>
+                    <div className="text-white font-semibold text-lg">{displayHeight} cm</div>
+                  </div>
+                )}
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Bust</div>
+                  <div className="text-white font-semibold text-lg">{model.measurements?.bust || "—"} cm</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Waist</div>
+                  <div className="text-white font-semibold text-lg">{model.measurements?.waist || "—"} cm</div>
+                </div>
+                <div>
+                  <div className="text-gray-500 text-xs mb-1.5">Hips</div>
+                  <div className="text-white font-semibold text-lg">{model.measurements?.hips || "—"} cm</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bio & Motivation */}
+            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Info size={14} />
+                Bio & Motivation
+              </h3>
+              <p className="text-sm text-gray-300 leading-relaxed">
+                {model.motivation || "No motivation provided yet."}
+              </p>
+            </div>
+          </div>
+
+          {/* AI Classification */}
+          {model.aiCategory && (
+            <div className="bg-[#111] rounded-xl p-5 border border-white/10">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Sparkles size={14} />
+                AI Classification
+              </h3>
+              <div className="mb-4">
+                <StatusBadge status={model.aiCategory} />
+              </div>
+              {model.aiReasons && model.aiReasons.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-3">Analysis Summary:</p>
+                  <ul className="space-y-2">
+                    {model.aiReasons.map((reason, i) => (
+                      <li key={i} className="text-sm text-gray-300 flex items-start">
+                        <span className="mr-2 text-purple-400 mt-0.5">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
-        </AnimatePresence>
+        </div>
+      </div>
+
+      {/* SIMPLE LIGHTBOX - Only shows when photo is selected */}
+      {selectedPhotoIndex !== null && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setSelectedPhotoIndex(null)}
+        >
+          <button
+            onClick={() => setSelectedPhotoIndex(null)}
+            className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Close"
+          >
+            <X size={24} className="text-white" />
+          </button>
+          
+          <button
+            onClick={(e) => { e.stopPropagation(); navigatePhoto("prev"); }}
+            className="absolute left-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Previous"
+          >
+            <ChevronLeft size={24} className="text-white" />
+          </button>
+          
+          <button
+            onClick={(e) => { e.stopPropagation(); navigatePhoto("next"); }}
+            className="absolute right-4 p-3 bg-white/10 hover:bg-white/20 rounded-lg transition-colors z-10"
+            aria-label="Next"
+          >
+            <ChevronRight size={24} className="text-white" />
+          </button>
+
+          <div 
+            className="max-w-[90vw] max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={photos[selectedPhotoIndex].url}
+              alt={`${model.name} - ${photos[selectedPhotoIndex].type || `Photo ${selectedPhotoIndex + 1}`}`}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            />
+          </div>
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg text-sm text-white">
+            {selectedPhotoIndex + 1} / {photos.length}
+            {photos[selectedPhotoIndex].type && ` • ${photos[selectedPhotoIndex].type}`}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

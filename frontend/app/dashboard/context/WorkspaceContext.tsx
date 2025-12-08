@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type ViewMode = "applications" | "chats" | "analytics";
+type ViewMode = "home" | "applications" | "chats" | "analytics" | "favorites";
 
 interface WorkspaceState {
   viewMode: ViewMode;
@@ -35,7 +35,7 @@ const WorkspaceContext = createContext<WorkspaceContextType | undefined>(undefin
 function WorkspaceProviderInner({ children }: { children: ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Initialize state from URL params
   const [state, setState] = useState<WorkspaceState>(() => {
     // Initialize from URL params on mount
@@ -44,19 +44,23 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
     const chat = searchParams.get("chat");
     const search = searchParams.get("search");
     const tab = searchParams.get("tab");
-    
+
     // Map old view modes to new ones for backward compatibility
-    let mappedView: ViewMode = "applications";
-    if (view === "pipeline" || view === "models") {
+    let mappedView: ViewMode = "home"; // Default to home
+    if (view === "pipeline" || view === "models" || view === "applications") {
       mappedView = "applications";
     } else if (view === "chats") {
       mappedView = "chats";
     } else if (view === "analytics") {
       mappedView = "analytics";
+    } else if (view === "favorites") {
+      mappedView = "favorites";
+    } else if (view === "home") {
+      mappedView = "home";
     } else if (view) {
-      mappedView = view as ViewMode;
+      // mappedView = view as ViewMode; // Fallback
     }
-    
+
     return {
       viewMode: mappedView,
       selectedModelId: model ? parseInt(model) : null,
@@ -73,37 +77,47 @@ function WorkspaceProviderInner({ children }: { children: ReactNode }) {
   // Sync state with URL params when they change (e.g., from sidebar navigation)
   useEffect(() => {
     const view = searchParams.get("view");
+    let mappedView: ViewMode = "home"; // Default to home if no param
+
     if (view) {
-      let mappedView: ViewMode = "applications";
-      if (view === "pipeline" || view === "models") {
+      if (view === "pipeline" || view === "models" || view === "applications") {
         mappedView = "applications";
       } else if (view === "chats") {
         mappedView = "chats";
       } else if (view === "analytics") {
         mappedView = "analytics";
-      } else {
-        mappedView = view as ViewMode;
+      } else if (view === "favorites") {
+        mappedView = "favorites";
+      } else if (view === "home") {
+        mappedView = "home";
       }
-      
-      if (state.viewMode !== mappedView) {
-        setState((prev) => ({
-          ...prev,
-          viewMode: mappedView,
-          selectedModelId: null,
-          activeChatId: null,
-        }));
-      }
+    }
+
+    // Update state if it differs from URL (handles Back button AND explicit navigation consistency)
+    if (state.viewMode !== mappedView) {
+      // If we are already on home and URL is empty, this is fine.
+      // If we are on applications and URL becomes empty (Back button), this switches us to home.
+      // If we click Home button:
+      // 1. setViewMode('home') -> state=home
+      // 2. URL updates to ""
+      // 3. Effect runs. mappedView=home. state=home. No change. Correct.
+      setState((prev) => ({
+        ...prev,
+        viewMode: mappedView,
+        selectedModelId: null,
+        activeChatId: null,
+      }));
     }
   }, [searchParams, state.viewMode]);
 
   // Update URL when state changes
   useEffect(() => {
     const params = new URLSearchParams();
-    if (state.viewMode !== "applications") params.set("view", state.viewMode);
+    if (state.viewMode !== "home") params.set("view", state.viewMode); // Don't set view param for home (default)
     if (state.selectedModelId) params.set("model", state.selectedModelId.toString());
     if (state.activeChatId) params.set("chat", state.activeChatId.toString());
     if (state.searchQuery) params.set("search", state.searchQuery);
-    
+
     const newUrl = `/dashboard${params.toString() ? `?${params.toString()}` : ""}`;
     const currentUrl = window.location.pathname + window.location.search;
     if (currentUrl !== newUrl) {

@@ -1,0 +1,15 @@
+./components/ui/accordion.tsx:4:1
+Module not found: Can't resolve '@radix-ui/react-accordion'
+  2 |
+  3 | import * as React from "react"
+> 4 | import * as AccordionPrimitive from "@radix-ui/react-accordion"
+    | ^
+  5 | import { ChevronDown } from "lucide-react"
+  6 |
+  7 | import { cn } from "@/lib/utils"
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./components/home/FAQ.tsx
+./app/page.tsx
