@@ -47,4 +47,4 @@ Work in progress. Analytics view is a placeholder and the auth router is current
 
 ---
 
-Built by [Miguel](https://github.com/supitsmono) with an AI-assisted workflow (Claude / Cursor): I own the product, architecture and decisions; AI writes most of the code.
+Built by [Miguel](https://github.com/supitsmono) with an AI-assisted workflow: I own the product, architecture and decisions; AI coding tools write most of the code.
